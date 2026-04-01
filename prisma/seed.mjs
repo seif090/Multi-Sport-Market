@@ -23,6 +23,7 @@ async function main() {
         name: user.name,
         phone: user.phone,
         role: UserRole[user.role],
+        isActive: user.isActive ?? true,
       },
     })
   }

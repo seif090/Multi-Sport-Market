@@ -281,6 +281,11 @@ textarea:focus {
   gap: 10px;
 }
 
+.courts-share-row {
+  margin-top: 14px;
+  align-items: center;
+}
+
 .section {
   margin-top: 34px;
 }
@@ -624,6 +629,16 @@ textarea:focus {
 
 .checkbox-row input {
   width: auto;
+}
+
+.row-check {
+  display: inline-flex;
+  align-items: center;
+}
+
+.row-check input {
+  width: 18px;
+  height: 18px;
 }
 
 .preview-card {

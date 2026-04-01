@@ -9,7 +9,7 @@ export async function GET() {
 
   if (!prisma) {
     return NextResponse.json({
-      courts: memoryStore.courts.length,
+      courts: memoryStore.courts.filter((court) => court.isActive !== false).length,
       bookings: memoryStore.bookings.length,
       jobs: memoryStore.maintenanceJobs.length,
     })
@@ -25,7 +25,7 @@ export async function GET() {
     return NextResponse.json({ courts, bookings, jobs })
   } catch {
     return NextResponse.json({
-      courts: memoryStore.courts.length,
+      courts: memoryStore.courts.filter((court) => court.isActive !== false).length,
       bookings: memoryStore.bookings.length,
       jobs: memoryStore.maintenanceJobs.length,
     })

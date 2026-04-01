@@ -33,6 +33,7 @@ model User {
   phone          String?           @unique
   email          String?           @unique
   role           UserRole          @default(PLAYER)
+  isActive       Boolean           @default(true)
   vendorCourts   Court[]           @relation("VendorCourts")
   vendorJobs     MaintenanceJob[]  @relation("VendorJobs")
   technicianJobs MaintenanceJob[]  @relation("TechnicianJobs")

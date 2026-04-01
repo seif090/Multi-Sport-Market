@@ -67,45 +67,30 @@ export async function DELETE(request, { params }) {
 
   try {
     if (!prisma) {
-      const courtIndex = memoryStore.courts.findIndex((item) => item.id === courtId)
-      if (courtIndex === -1) {
+      const court = memoryStore.courts.find((item) => item.id === courtId)
+      if (!court) {
         return NextResponse.json({ error: 'Court not found' }, { status: 404 })
       }
 
-      const hasBookings = memoryStore.bookings.some((booking) => booking.courtId === courtId && booking.status !== 'CANCELLED')
-      if (hasBookings) {
-        return NextResponse.json({ error: 'Cannot delete a court with active bookings' }, { status: 409 })
-      }
-
-      const [removed] = memoryStore.courts.splice(courtIndex, 1)
-      return NextResponse.json({ court: removed })
+      court.isActive = false
+      return NextResponse.json({ court })
     }
 
-    const court = await prisma.court.findUnique({
+    const existingCourt = await prisma.court.findUnique({
       where: { id: courtId },
     })
 
-    if (!court) {
+    if (!existingCourt) {
       return NextResponse.json({ error: 'Court not found' }, { status: 404 })
     }
 
-    const bookingCount = await prisma.booking.count({
-      where: {
-        courtId,
-        status: { not: 'CANCELLED' },
-      },
-    })
-
-    if (bookingCount > 0) {
-      return NextResponse.json({ error: 'Cannot delete a court with active bookings' }, { status: 409 })
-    }
-
-    const removed = await prisma.court.delete({
+    const updatedCourt = await prisma.court.update({
       where: { id: courtId },
+      data: { isActive: false },
     })
 
-    return NextResponse.json({ court: removed })
+    return NextResponse.json({ court: updatedCourt })
   } catch (error) {
-    return NextResponse.json({ error: 'Unable to delete court' }, { status: 500 })
+    return NextResponse.json({ error: 'Unable to update court status' }, { status: 500 })
   }
 }

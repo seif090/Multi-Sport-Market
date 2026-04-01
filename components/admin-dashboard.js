@@ -50,6 +50,7 @@ function createUserDraft(user) {
     name: user.name ?? '',
     phone: user.phone ?? '',
     role: user.role ?? 'PLAYER',
+    isActive: user.isActive !== false,
   }
 }
 
@@ -73,6 +74,7 @@ function createEmptyUserDraft() {
     name: '',
     phone: '',
     role: 'PLAYER',
+    isActive: true,
   }
 }
 
@@ -87,6 +89,8 @@ export function AdminDashboard() {
   const [notice, setNotice] = useState('')
   const [selectedCourtId, setSelectedCourtId] = useState('')
   const [selectedUserId, setSelectedUserId] = useState('')
+  const [selectedCourtIds, setSelectedCourtIds] = useState([])
+  const [selectedUserIds, setSelectedUserIds] = useState([])
   const [courtDraft, setCourtDraft] = useState(null)
   const [userDraft, setUserDraft] = useState(null)
   const [newCourtDraft, setNewCourtDraft] = useState(createEmptyCourtDraft())
@@ -150,7 +154,45 @@ export function AdminDashboard() {
     setUserDraft(createUserDraft(user))
   }, [data, selectedUserId])
 
+  useEffect(() => {
+    if (!data?.courts?.length) {
+      setSelectedCourtIds([])
+      return
+    }
+
+    setSelectedCourtIds((current) => current.filter((id) => data.courts.some((court) => court.id === id)))
+  }, [data])
+
+  useEffect(() => {
+    if (!data?.users?.length) {
+      setSelectedUserIds([])
+      return
+    }
+
+    setSelectedUserIds((current) => current.filter((id) => data.users.some((user) => user.id === id)))
+  }, [data])
+
   const summary = data?.summary || { users: 0, courts: 0, bookings: 0, jobs: 0 }
+
+  function toggleCourtSelection(courtId) {
+    setSelectedCourtIds((current) =>
+      current.includes(courtId) ? current.filter((id) => id !== courtId) : [...current, courtId]
+    )
+  }
+
+  function toggleUserSelection(userId) {
+    setSelectedUserIds((current) =>
+      current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId]
+    )
+  }
+
+  function setAllCourtsSelected(isSelected) {
+    setSelectedCourtIds(isSelected ? (data?.courts || []).map((court) => court.id) : [])
+  }
+
+  function setAllUsersSelected(isSelected) {
+    setSelectedUserIds(isSelected ? (data?.users || []).map((user) => user.id) : [])
+  }
 
   async function saveCourt(event) {
     event.preventDefault()
@@ -210,7 +252,7 @@ export function AdminDashboard() {
   }
 
   async function deleteCourt(courtId, courtName) {
-    if (!window.confirm(`حذف الملعب "${courtName}" نهائيًا؟`)) {
+    if (!window.confirm(`تعطيل الملعب "${courtName}"؟`)) {
       return
     }
 
@@ -227,10 +269,10 @@ export function AdminDashboard() {
         throw new Error(payload?.error || 'تعذر حذف الملعب')
       }
 
-      setNotice(`تم حذف الملعب ${payload?.court?.name || courtName}`.trim())
+      setNotice(`تم تعطيل الملعب ${payload?.court?.name || courtName}`.trim())
       window.dispatchEvent(new Event('msm:data-changed'))
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : 'تعذر حذف الملعب')
+      setError(deleteError instanceof Error ? deleteError.message : 'تعذر تعطيل الملعب')
     }
   }
 
@@ -292,7 +334,7 @@ export function AdminDashboard() {
   }
 
   async function deleteUser(userId, userName) {
-    if (!window.confirm(`حذف المستخدم "${userName}" نهائيًا؟`)) {
+    if (!window.confirm(`تعطيل المستخدم "${userName}"؟`)) {
       return
     }
 
@@ -309,10 +351,62 @@ export function AdminDashboard() {
         throw new Error(payload?.error || 'تعذر حذف المستخدم')
       }
 
-      setNotice(`تم حذف المستخدم ${payload?.user?.name || userName}`.trim())
+      setNotice(`تم تعطيل المستخدم ${payload?.user?.name || userName}`.trim())
       window.dispatchEvent(new Event('msm:data-changed'))
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : 'تعذر حذف المستخدم')
+      setError(deleteError instanceof Error ? deleteError.message : 'تعذر تعطيل المستخدم')
+    }
+  }
+
+  async function bulkUpdateCourts(action) {
+    if (!selectedCourtIds.length) return
+
+    setError('')
+    setNotice('')
+
+    try {
+      const response = await fetch('/api/admin/courts/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedCourtIds, action }),
+      })
+      const payload = await response.json()
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'تعذر تنفيذ الإجراء المجمع')
+      }
+
+      setSelectedCourtIds([])
+      setNotice(action === 'activate' ? 'تمت استعادة الملاعب المحددة' : 'تم تعطيل الملاعب المحددة')
+      window.dispatchEvent(new Event('msm:data-changed'))
+    } catch (bulkError) {
+      setError(bulkError instanceof Error ? bulkError.message : 'تعذر تنفيذ الإجراء المجمع')
+    }
+  }
+
+  async function bulkUpdateUsers(action) {
+    if (!selectedUserIds.length) return
+
+    setError('')
+    setNotice('')
+
+    try {
+      const response = await fetch('/api/admin/users/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedUserIds, action }),
+      })
+      const payload = await response.json()
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'تعذر تنفيذ الإجراء المجمع')
+      }
+
+      setSelectedUserIds([])
+      setNotice(action === 'activate' ? 'تمت استعادة المستخدمين المحددين' : 'تم تعطيل المستخدمين المحددين')
+      window.dispatchEvent(new Event('msm:data-changed'))
+    } catch (bulkError) {
+      setError(bulkError instanceof Error ? bulkError.message : 'تعذر تنفيذ الإجراء المجمع')
     }
   }
 
@@ -481,6 +575,14 @@ export function AdminDashboard() {
             <div className="preview-card">
               <span className={`status-pill ${statusClass(newUserDraft.role)}`}>{roleLabels[newUserDraft.role]}</span>
               <p className="table-note">أدخل حسابًا جديدًا لتجربة الصلاحيات أو ربط مالك/فني جديد.</p>
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={newUserDraft.isActive}
+                  onChange={(event) => setNewUserDraft({ ...newUserDraft, isActive: event.target.checked })}
+                />
+                <span>الحساب نشط</span>
+              </label>
             </div>
             <div className="button-row">
               <button className="primary-btn" type="submit" disabled={creatingUser}>
@@ -663,6 +765,15 @@ export function AdminDashboard() {
                       </label>
                     </div>
 
+                    <label className="checkbox-row">
+                      <input
+                        type="checkbox"
+                        checked={userDraft.isActive}
+                        onChange={(event) => setUserDraft({ ...userDraft, isActive: event.target.checked })}
+                      />
+                      <span>الحساب نشط</span>
+                    </label>
+
                     <div className="preview-card">
                       <span className={`status-pill ${statusClass(userDraft.role)}`}>{roleLabels[userDraft.role] || userDraft.role}</span>
                       <p className="table-note">التغيير هنا ينعكس فورًا على الصلاحيات الخاصة بالمستخدم.</p>
@@ -687,7 +798,31 @@ export function AdminDashboard() {
                 <p className="eyebrow">Users</p>
                 <h3>الحسابات</h3>
               </div>
-              <span className="dashboard-chip">{data?.users?.length || 0} accounts</span>
+              <div className="button-row">
+                <button
+                  className="secondary-btn"
+                  type="button"
+                  disabled={!selectedUserIds.length}
+                  onClick={() => bulkUpdateUsers('deactivate')}
+                >
+                  تعطيل المحدد
+                </button>
+                <button
+                  className="secondary-btn"
+                  type="button"
+                  disabled={!selectedUserIds.length}
+                  onClick={() => bulkUpdateUsers('activate')}
+                >
+                  استعادة المحدد
+                </button>
+                <button className="secondary-btn" type="button" onClick={() => setAllUsersSelected(true)}>
+                  تحديد الكل
+                </button>
+                <button className="secondary-btn" type="button" onClick={() => setAllUsersSelected(false)}>
+                  إلغاء الكل
+                </button>
+                <span className="dashboard-chip">{selectedUserIds.length}/{data?.users?.length || 0}</span>
+              </div>
             </div>
             <div className="table-list">
               {(data?.users || []).map((user) => (
@@ -697,13 +832,23 @@ export function AdminDashboard() {
                     <p className="table-note">{user.phone}</p>
                   </div>
                   <div className="row-actions">
+                    <label className="row-check">
+                      <input
+                        type="checkbox"
+                        checked={selectedUserIds.includes(user.id)}
+                        onChange={() => toggleUserSelection(user.id)}
+                      />
+                    </label>
                     <button className="secondary-btn" type="button" onClick={() => setSelectedUserId(user.id)}>
                       تحرير
                     </button>
                     <button className="danger-btn" type="button" onClick={() => deleteUser(user.id, user.name)}>
-                      حذف
+                      تعطيل
                     </button>
                     <span className={`status-pill ${statusClass(user.role)}`}>{roleLabels[user.role] || user.role}</span>
+                    <span className={`status-pill ${user.isActive === false ? 'status-cancelled' : 'status-accepted'}`}>
+                      {user.isActive === false ? 'Hidden' : 'Active'}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -714,7 +859,31 @@ export function AdminDashboard() {
             <div className="dashboard-card" id="courts">
               <div className="dashboard-head">
                 <h3>الملاعب</h3>
-                <span className="dashboard-chip">{data?.courts?.length || 0}</span>
+                <div className="button-row">
+                  <button
+                    className="secondary-btn"
+                    type="button"
+                    disabled={!selectedCourtIds.length}
+                    onClick={() => bulkUpdateCourts('deactivate')}
+                  >
+                    تعطيل المحدد
+                  </button>
+                  <button
+                    className="secondary-btn"
+                    type="button"
+                    disabled={!selectedCourtIds.length}
+                    onClick={() => bulkUpdateCourts('activate')}
+                  >
+                    استعادة المحدد
+                  </button>
+                  <button className="secondary-btn" type="button" onClick={() => setAllCourtsSelected(true)}>
+                    تحديد الكل
+                  </button>
+                  <button className="secondary-btn" type="button" onClick={() => setAllCourtsSelected(false)}>
+                    إلغاء الكل
+                  </button>
+                  <span className="dashboard-chip">{selectedCourtIds.length}/{data?.courts?.length || 0}</span>
+                </div>
               </div>
               <p className="table-note">الملاعب المسجلة والمعروضة على المنصة.</p>
               <div className="table-list compact">
@@ -727,11 +896,18 @@ export function AdminDashboard() {
                       </p>
                     </div>
                     <div className="row-actions">
+                      <label className="row-check">
+                        <input
+                          type="checkbox"
+                          checked={selectedCourtIds.includes(court.id)}
+                          onChange={() => toggleCourtSelection(court.id)}
+                        />
+                      </label>
                       <button className="secondary-btn" type="button" onClick={() => setSelectedCourtId(court.id)}>
                         تحرير
                       </button>
                       <button className="danger-btn" type="button" onClick={() => deleteCourt(court.id, court.name)}>
-                        حذف
+                        تعطيل
                       </button>
                       <span className={`status-pill ${court.isActive ? 'status-accepted' : 'status-cancelled'}`}>
                         {court.isActive ? 'Active' : 'Hidden'}

@@ -86,6 +86,7 @@ export function CourtsExplorer({ courts, initialFilters }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [filters, setFilters] = useState(() => normalizeFilters(initialFilters))
+  const [linkStatus, setLinkStatus] = useState('')
 
   useEffect(() => {
     const nextFilters = normalizeFilters(Object.fromEntries(searchParams.entries()))
@@ -155,6 +156,40 @@ export function CourtsExplorer({ courts, initialFilters }) {
       ...current,
       page,
     }))
+  }
+
+  async function copyShareLink() {
+    if (typeof window === 'undefined') return
+
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setLinkStatus('تم نسخ الرابط')
+    } catch {
+      setLinkStatus('تعذر نسخ الرابط')
+    }
+  }
+
+  async function shareLink() {
+    if (typeof window === 'undefined') return
+
+    const url = window.location.href
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Multi Sport Market',
+          text: 'شارك فلاتر الملاعب الحالية',
+          url,
+        })
+        setLinkStatus('تمت المشاركة')
+        return
+      }
+
+      await navigator.clipboard.writeText(url)
+      setLinkStatus('تم نسخ الرابط')
+    } catch {
+      setLinkStatus('تعذر المشاركة')
+    }
   }
 
   return (
@@ -236,10 +271,20 @@ export function CourtsExplorer({ courts, initialFilters }) {
                   page: 1,
                 })
               }
-            >
+              >
               إعادة الضبط
             </button>
           </div>
+        </div>
+
+        <div className="button-row courts-share-row">
+          <button className="secondary-btn" type="button" onClick={shareLink}>
+            مشاركة الرابط
+          </button>
+          <button className="secondary-btn" type="button" onClick={copyShareLink}>
+            نسخ الرابط
+          </button>
+          {linkStatus ? <span className="table-note">{linkStatus}</span> : null}
         </div>
 
         <div className="section-head" style={{ marginTop: '18px' }}>

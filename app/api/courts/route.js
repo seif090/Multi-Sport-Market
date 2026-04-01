@@ -8,7 +8,7 @@ export async function GET() {
   const prisma = getPrisma()
 
   if (!prisma) {
-    return NextResponse.json({ courts: memoryStore.courts, source: 'mock' })
+    return NextResponse.json({ courts: memoryStore.courts.filter((court) => court.isActive !== false), source: 'mock' })
   }
 
   try {
@@ -19,6 +19,6 @@ export async function GET() {
 
     return NextResponse.json({ courts, source: 'database' })
   } catch {
-    return NextResponse.json({ courts: memoryStore.courts, source: 'mock' })
+    return NextResponse.json({ courts: memoryStore.courts.filter((court) => court.isActive !== false), source: 'mock' })
   }
 }
