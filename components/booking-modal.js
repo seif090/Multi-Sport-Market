@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 const initialForm = {
   customerName: '',
@@ -8,13 +8,38 @@ const initialForm = {
   startsAt: '',
   durationMinutes: '90',
   notes: '',
+  repeatPattern: 'NONE',
+  repeatCount: '1',
+  joinWaitlist: false,
 }
 
-export function BookingModal({ isOpen, court, onClose, onCreated }) {
+function toLocalDatetimeValue(date) {
+  const pad = (value) => String(value).padStart(2, '0')
+  const result = new Date(date)
+  const year = result.getFullYear()
+  const month = pad(result.getMonth() + 1)
+  const day = pad(result.getDate())
+  const hours = pad(result.getHours())
+  const minutes = pad(result.getMinutes())
+  return `${year}-${month}-${day}T${hours}:${minutes}`
+}
+
+export function BookingModal({ isOpen, court, prefillStart, onClose, onCreated }) {
   const [form, setForm] = useState(initialForm)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+
+  useEffect(() => {
+    if (!isOpen) return
+
+    setForm((current) => ({
+      ...initialForm,
+      startsAt: prefillStart ? toLocalDatetimeValue(prefillStart) : current.startsAt,
+    }))
+    setError('')
+    setSuccess('')
+  }, [isOpen, prefillStart, court?.id])
 
   const meta = useMemo(() => {
     if (!court) return ''
@@ -44,6 +69,9 @@ export function BookingModal({ isOpen, court, onClose, onCreated }) {
           startsAt: starts.toISOString(),
           endsAt: ends.toISOString(),
           notes: form.notes || undefined,
+          repeatPattern: form.repeatPattern,
+          repeatCount: Number(form.repeatCount || 1),
+          joinWaitlist: Boolean(form.joinWaitlist),
         }),
       })
 
@@ -53,10 +81,17 @@ export function BookingModal({ isOpen, court, onClose, onCreated }) {
         throw new Error(payload?.error || 'تعذر إنشاء الحجز')
       }
 
-      setSuccess('تم إرسال طلب الحجز بنجاح')
+      const recurring = form.repeatPattern !== 'NONE'
+      setSuccess(
+        payload?.waitlistEntries?.length
+          ? 'تم تأكيد المتاح وإضافة التعارضات إلى قائمة الانتظار'
+          : recurring
+            ? 'تم إنشاء سلسلة الحجوزات بنجاح'
+            : 'تم إرسال طلب الحجز بنجاح'
+      )
       setForm(initialForm)
       window.dispatchEvent(new Event('msm:data-changed'))
-      onCreated?.(payload.booking)
+      onCreated?.(payload.booking || payload.bookings?.[0] || payload.waitlistEntries?.[0] || null)
 
       setTimeout(() => {
         onClose()
@@ -118,6 +153,43 @@ export function BookingModal({ isOpen, court, onClose, onCreated }) {
               <option value="90">90 دقيقة</option>
               <option value="120">120 دقيقة</option>
             </select>
+          </label>
+          <label>
+            تكرار الحجز
+            <select
+              value={form.repeatPattern}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, repeatPattern: event.target.value, repeatCount: event.target.value === 'NONE' ? '1' : current.repeatCount }))
+              }
+            >
+              <option value="NONE">مرة واحدة</option>
+              <option value="DAILY">يوميًا</option>
+              <option value="WEEKLY">أسبوعيًا</option>
+            </select>
+          </label>
+          {form.repeatPattern !== 'NONE' ? (
+            <label>
+              عدد التكرارات
+              <select
+                value={form.repeatCount}
+                onChange={(event) => setForm((current) => ({ ...current, repeatCount: event.target.value }))}
+              >
+                <option value="2">2 مرات</option>
+                <option value="3">3 مرات</option>
+                <option value="4">4 مرات</option>
+                <option value="6">6 مرات</option>
+                <option value="8">8 مرات</option>
+                <option value="12">12 مرة</option>
+              </select>
+            </label>
+          ) : null}
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={form.joinWaitlist}
+              onChange={(event) => setForm((current) => ({ ...current, joinWaitlist: event.target.checked }))}
+            />
+            <span>لو فيه تعارض، ضفني على قائمة الانتظار</span>
           </label>
           <label>
             ملاحظات

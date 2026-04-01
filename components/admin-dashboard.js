@@ -112,6 +112,7 @@ export function AdminDashboard() {
   const [savingUser, setSavingUser] = useState(false)
   const [creatingCourt, setCreatingCourt] = useState(false)
   const [creatingUser, setCreatingUser] = useState(false)
+  const [analytics, setAnalytics] = useState(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [selectedCourtId, setSelectedCourtId] = useState('')
@@ -131,12 +132,25 @@ export function AdminDashboard() {
   async function loadData() {
     try {
       setError('')
-      const response = await fetch('/api/admin/overview', { cache: 'no-store' })
-      const payload = await response.json()
-      if (!response.ok) {
-        throw new Error(payload?.error || 'تعذر تحميل بيانات الإدارة')
+      const [overviewResponse, analyticsResponse] = await Promise.all([
+        fetch('/api/admin/overview', { cache: 'no-store' }),
+        fetch('/api/admin/analytics', { cache: 'no-store' }),
+      ])
+
+      const [overviewPayload, analyticsPayload] = await Promise.all([
+        overviewResponse.json(),
+        analyticsResponse.json(),
+      ])
+
+      if (!overviewResponse.ok) {
+        throw new Error(overviewPayload?.error || 'تعذر تحميل بيانات الإدارة')
       }
-      setData(payload)
+
+      if (!analyticsResponse.ok) {
+        throw new Error(analyticsPayload?.error || 'تعذر تحميل بيانات التحليلات')
+      }
+      setData(overviewPayload)
+      setAnalytics(analyticsPayload)
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'حدث خطأ غير متوقع')
     } finally {
@@ -643,6 +657,56 @@ export function AdminDashboard() {
           <strong>{loading ? '...' : summary.jobs}</strong>
           <span>طلبات الصيانة</span>
         </article>
+      </section>
+
+      <section className="panel analytics-panel">
+        <div className="table-head">
+          <div>
+            <p className="eyebrow">Advanced analytics</p>
+            <h3>التحليلات المتقدمة</h3>
+          </div>
+          <span className="dashboard-chip">30d window</span>
+        </div>
+        <div className="stats-grid analytics-grid">
+          <article className="stats-card">
+            <strong>{loading ? '...' : analytics?.revenue || '—'}</strong>
+            <span>الإيراد التقديري</span>
+          </article>
+          <article className="stats-card">
+            <strong>{loading ? '...' : `${analytics?.utilizationPercent ?? 0}%`}</strong>
+            <span>نسبة الإشغال</span>
+          </article>
+          <article className="stats-card">
+            <strong>{loading ? '...' : `${analytics?.bookingConversionPercent ?? 0}%`}</strong>
+            <span>تحويل الحجوزات</span>
+          </article>
+          <article className="stats-card">
+            <strong>{loading ? '...' : `${analytics?.waitlistConversionPercent ?? 0}%`}</strong>
+            <span>تحويل الانتظار</span>
+          </article>
+        </div>
+        <div className="analytics-bars">
+          {(analytics?.dailyRevenue || []).map((day) => (
+            <div key={day.label} className="analytics-bar">
+              <span>{day.label}</span>
+              <div className="analytics-bar-track">
+                <div className="analytics-bar-fill" style={{ width: `${Math.min(100, (day.value / Math.max(1, analytics.revenueCents || 1)) * 100)}%` }} />
+              </div>
+              <strong>{day.formatted}</strong>
+            </div>
+          ))}
+        </div>
+        <div className="analytics-top">
+          {(analytics?.topCourts || []).map((item) => (
+            <div key={item.name} className="analytics-top-row">
+              <div>
+                <strong>{item.name}</strong>
+                <p className="table-note">{item.count} bookings</p>
+              </div>
+              <span className="tag">{item.revenue}</span>
+            </div>
+          ))}
+        </div>
       </section>
 
       {error ? <p className="empty-state">{error}</p> : null}

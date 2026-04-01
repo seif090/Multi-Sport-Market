@@ -330,6 +330,126 @@ textarea:focus {
   margin: 16px 0 12px;
 }
 
+.analytics-panel {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.analytics-grid {
+  margin-top: 0;
+}
+
+.analytics-bars {
+  display: grid;
+  gap: 12px;
+}
+
+.analytics-bar {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.analytics-bar-track {
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.analytics-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent-2), var(--accent));
+}
+
+.analytics-top {
+  display: grid;
+  gap: 10px;
+}
+
+.analytics-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.calendar-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.calendar-day {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  text-align: start;
+  cursor: pointer;
+}
+
+.calendar-day.active {
+  border-color: rgba(91, 188, 255, 0.35);
+  background: rgba(91, 188, 255, 0.1);
+}
+
+.calendar-day strong,
+.calendar-day span {
+  display: block;
+}
+
+.calendar-day span {
+  color: var(--muted);
+  margin-top: 4px;
+  font-size: 0.88rem;
+}
+
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.slot-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  text-align: start;
+  cursor: pointer;
+}
+
+.slot-card.free {
+  border-color: rgba(49, 208, 170, 0.18);
+}
+
+.slot-card.taken {
+  border-color: rgba(255, 109, 109, 0.2);
+}
+
+.slot-card.selected {
+  box-shadow: 0 0 0 2px rgba(91, 188, 255, 0.2);
+}
+
+.slot-card span {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
 .section {
   margin-top: 34px;
 }

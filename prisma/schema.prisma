@@ -20,6 +20,13 @@ enum MaintenanceStatus {
   CANCELLED
 }
 
+enum WaitlistStatus {
+  WAITING
+  NOTIFIED
+  CONVERTED
+  EXPIRED
+}
+
 enum UserRole {
   PLAYER
   VENDOR
@@ -71,12 +78,18 @@ model Booking {
   endsAt       DateTime
   status       BookingStatus @default(PENDING)
   notes        String?
+  amountCents  Int           @default(0)
+  seriesId     String?
+  repeatPattern String?      
+  repeatCount  Int           @default(1)
+  occurrenceIndex Int        @default(0)
   court        Court         @relation(fields: [courtId], references: [id])
   user         User?         @relation(fields: [userId], references: [id])
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
   @@index([courtId, startsAt, endsAt])
+  @@index([seriesId])
 }
 
 model MaintenanceJob {
@@ -94,4 +107,28 @@ model MaintenanceJob {
   technician    User?             @relation("TechnicianJobs", fields: [technicianId], references: [id])
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
+}
+
+model WaitlistEntry {
+  id               String         @id @default(cuid())
+  courtId          String
+  userId           String?
+  customerName     String
+  phone            String
+  startsAt         DateTime
+  endsAt           DateTime
+  status           WaitlistStatus @default(WAITING)
+  notes            String?
+  repeatPattern    String?
+  repeatCount      Int            @default(1)
+  seriesId         String?
+  convertedBookingId String?
+  notifiedAt       DateTime?
+  court            Court          @relation(fields: [courtId], references: [id])
+  user             User?          @relation(fields: [userId], references: [id])
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([courtId, status, startsAt])
+  @@index([seriesId])
 }

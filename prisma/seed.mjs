@@ -1,5 +1,6 @@
 import { PrismaClient, BookingStatus, MaintenanceStatus, UserRole } from '@prisma/client'
-import { bookingsSeed, courtsSeed, maintenanceSeed, usersSeed } from '../lib/seed.js'
+import { bookingsSeed, courtsSeed, maintenanceSeed, usersSeed, waitlistSeed } from '../lib/seed.js'
+import { calculateAmountCents } from '../lib/scheduling.js'
 
 const prisma = new PrismaClient()
 
@@ -38,6 +39,7 @@ async function main() {
   }
 
   for (const booking of bookingsSeed) {
+    const court = courtsSeed.find((item) => item.id === booking.courtId)
     await prisma.booking.create({
       data: {
         id: booking.id,
@@ -49,6 +51,11 @@ async function main() {
         endsAt: new Date(booking.endsAt),
         status: BookingStatus[booking.status],
         notes: booking.notes,
+        amountCents: booking.amountCents ?? calculateAmountCents(court, booking.startsAt, booking.endsAt),
+        seriesId: booking.seriesId || null,
+        repeatPattern: booking.repeatPattern || 'NONE',
+        repeatCount: booking.repeatCount || 1,
+        occurrenceIndex: booking.occurrenceIndex || 0,
       },
     })
   }
@@ -70,7 +77,29 @@ async function main() {
     })
   }
 
-  console.log(`Seeded ${courtsSeed.length} courts, ${bookingsSeed.length} bookings, and ${maintenanceSeed.length} maintenance jobs.`)
+  for (const entry of waitlistSeed) {
+    await prisma.waitlistEntry.create({
+      data: {
+        id: entry.id,
+        courtId: entry.courtId,
+        userId: entry.userId || null,
+        customerName: entry.customerName,
+        phone: entry.phone,
+        startsAt: new Date(entry.startsAt),
+        endsAt: new Date(entry.endsAt),
+        status: entry.status,
+        notes: entry.notes,
+        repeatPattern: entry.repeatPattern || null,
+        repeatCount: entry.repeatCount || 1,
+        seriesId: entry.seriesId || null,
+        notifiedAt: entry.notifiedAt ? new Date(entry.notifiedAt) : null,
+      },
+    })
+  }
+
+  console.log(
+    `Seeded ${courtsSeed.length} courts, ${bookingsSeed.length} bookings, ${waitlistSeed.length} waitlist entries, and ${maintenanceSeed.length} maintenance jobs.`
+  )
 }
 
 main()
