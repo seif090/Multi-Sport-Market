@@ -9,7 +9,9 @@ const roleLabels = {
   ADMIN: 'Admin',
 }
 
-function tagClass(role) {
+const roleOptions = ['PLAYER', 'VENDOR', 'TECHNICIAN', 'ADMIN']
+
+function statusClass(role) {
   switch (role) {
     case 'ADMIN':
       return 'status-accepted'
@@ -22,10 +24,46 @@ function tagClass(role) {
   }
 }
 
+function createCourtDraft(court) {
+  if (!court) return null
+
+  return {
+    id: court.id,
+    name: court.name ?? '',
+    area: court.area ?? '',
+    areaLabel: court.areaLabel ?? '',
+    sport: court.sport ?? '',
+    sportLabel: court.sportLabel ?? '',
+    price: court.price ?? '',
+    priceLabel: court.priceLabel ?? '',
+    badge: court.badge ?? '',
+    description: court.description ?? '',
+    isActive: Boolean(court.isActive),
+  }
+}
+
+function createUserDraft(user) {
+  if (!user) return null
+
+  return {
+    id: user.id,
+    name: user.name ?? '',
+    phone: user.phone ?? '',
+    role: user.role ?? 'PLAYER',
+  }
+}
+
 export function AdminDashboard() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [savingCourt, setSavingCourt] = useState(false)
+  const [savingUser, setSavingUser] = useState(false)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [selectedCourtId, setSelectedCourtId] = useState('')
+  const [selectedUserId, setSelectedUserId] = useState('')
+  const [courtDraft, setCourtDraft] = useState(null)
+  const [userDraft, setUserDraft] = useState(null)
 
   async function loadData() {
     try {
@@ -50,7 +88,100 @@ export function AdminDashboard() {
     return () => window.removeEventListener('msm:data-changed', handler)
   }, [])
 
+  useEffect(() => {
+    if (!selectedCourtId && data?.courts?.length) {
+      setSelectedCourtId(data.courts[0].id)
+    }
+    if (!selectedUserId && data?.users?.length) {
+      setSelectedUserId(data.users[0].id)
+    }
+  }, [data, selectedCourtId, selectedUserId])
+
+  useEffect(() => {
+    if (!data?.courts?.length) {
+      setCourtDraft(null)
+      return
+    }
+
+    const court = data.courts.find((item) => item.id === selectedCourtId) || data.courts[0]
+    if (court && court.id !== selectedCourtId) {
+      setSelectedCourtId(court.id)
+    }
+    setCourtDraft(createCourtDraft(court))
+  }, [data, selectedCourtId])
+
+  useEffect(() => {
+    if (!data?.users?.length) {
+      setUserDraft(null)
+      return
+    }
+
+    const user = data.users.find((item) => item.id === selectedUserId) || data.users[0]
+    if (user && user.id !== selectedUserId) {
+      setSelectedUserId(user.id)
+    }
+    setUserDraft(createUserDraft(user))
+  }, [data, selectedUserId])
+
   const summary = data?.summary || { users: 0, courts: 0, bookings: 0, jobs: 0 }
+
+  async function saveCourt(event) {
+    event.preventDefault()
+    if (!courtDraft) return
+
+    setSavingCourt(true)
+    setError('')
+    setNotice('')
+
+    try {
+      const response = await fetch(`/api/admin/courts/${courtDraft.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(courtDraft),
+      })
+      const payload = await response.json()
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'تعذر حفظ بيانات الملعب')
+      }
+
+      setNotice(`تم تحديث الملعب ${payload?.court?.name || ''}`.trim())
+      window.dispatchEvent(new Event('msm:data-changed'))
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'تعذر حفظ بيانات الملعب')
+    } finally {
+      setSavingCourt(false)
+    }
+  }
+
+  async function saveUser(event) {
+    event.preventDefault()
+    if (!userDraft) return
+
+    setSavingUser(true)
+    setError('')
+    setNotice('')
+
+    try {
+      const response = await fetch(`/api/admin/users/${userDraft.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userDraft),
+      })
+      const payload = await response.json()
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'تعذر حفظ بيانات المستخدم')
+      }
+
+      setNotice(`تم تحديث المستخدم ${payload?.user?.name || ''}`.trim())
+      window.dispatchEvent(new Event('msm:data-changed'))
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'تعذر حفظ بيانات المستخدم')
+    } finally {
+      setSavingUser(false)
+    }
+  }
 
   return (
     <main className="dashboard">
@@ -58,7 +189,7 @@ export function AdminDashboard() {
         <div>
           <p className="eyebrow">Admin portal</p>
           <h2>لوحة إدارة المنصة</h2>
-          <p className="dashboard-copy">رؤية شاملة للمستخدمين، الملاعب، الحجوزات، وطلبات الصيانة.</p>
+          <p className="dashboard-copy">إدارة الحسابات، الملاعب، الحجوزات، ومراجعة التشغيل من مكان واحد.</p>
         </div>
         <div className="button-row">
           <button className="primary-btn" type="button" onClick={loadData}>
@@ -80,9 +211,14 @@ export function AdminDashboard() {
           <strong>{loading ? '...' : summary.bookings}</strong>
           <span>الحجوزات</span>
         </article>
+        <article className="stats-card">
+          <strong>{loading ? '...' : summary.jobs}</strong>
+          <span>طلبات الصيانة</span>
+        </article>
       </section>
 
       {error ? <p className="empty-state">{error}</p> : null}
+      {notice ? <p className="notice-state">{notice}</p> : null}
 
       <section className="dashboard-layout">
         <aside className="sidebar">
@@ -90,7 +226,10 @@ export function AdminDashboard() {
             <p className="eyebrow">Admin</p>
             <h3>مسارات الإدارة</h3>
             <div className="sidebar-nav">
-              <a className="sidebar-link active" href="#users">
+              <a className="sidebar-link active" href="#editors">
+                التعديل السريع
+              </a>
+              <a className="sidebar-link" href="#users">
                 المستخدمين
               </a>
               <a className="sidebar-link" href="#courts">
@@ -106,11 +245,170 @@ export function AdminDashboard() {
           </div>
           <div className="sidebar-panel">
             <div className="sidebar-step">A</div>
-            <p className="form-hint">الأدمِن يقدر يشوف كل الكيانات، بينما الأدوار الأخرى تظل محدودة بصلاحياتها.</p>
+            <p className="form-hint">
+              الأدمِن يقدر يراجع كل الكيانات ويعدل الملاعب والمستخدمين مباشرة من نفس اللوحة.
+            </p>
           </div>
         </aside>
 
         <div className="dashboard-main">
+          <section className="dashboard-grid" id="editors">
+            <article className="table-panel">
+              <div className="table-head">
+                <div>
+                  <p className="eyebrow">Court editor</p>
+                  <h3>تعديل ملعب</h3>
+                </div>
+                <span className="dashboard-chip">{data?.courts?.length || 0} item</span>
+              </div>
+
+              <div className="field-grid">
+                <label>
+                  اختيار ملعب
+                  <select value={selectedCourtId} onChange={(event) => setSelectedCourtId(event.target.value)}>
+                    {(data?.courts || []).map((court) => (
+                      <option key={court.id} value={court.id}>
+                        {court.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {courtDraft ? (
+                  <form className="editor-form" onSubmit={saveCourt}>
+                    <div className="field-grid field-grid--two">
+                      <label>
+                        الاسم
+                        <input value={courtDraft.name} onChange={(event) => setCourtDraft({ ...courtDraft, name: event.target.value })} />
+                      </label>
+                      <label>
+                        الشارة
+                        <input value={courtDraft.badge} onChange={(event) => setCourtDraft({ ...courtDraft, badge: event.target.value })} />
+                      </label>
+                      <label>
+                        المنطقة
+                        <input value={courtDraft.area} onChange={(event) => setCourtDraft({ ...courtDraft, area: event.target.value })} />
+                      </label>
+                      <label>
+                        اسم المنطقة
+                        <input value={courtDraft.areaLabel} onChange={(event) => setCourtDraft({ ...courtDraft, areaLabel: event.target.value })} />
+                      </label>
+                      <label>
+                        الرياضة
+                        <input value={courtDraft.sport} onChange={(event) => setCourtDraft({ ...courtDraft, sport: event.target.value })} />
+                      </label>
+                      <label>
+                        اسم الرياضة
+                        <input
+                          value={courtDraft.sportLabel}
+                          onChange={(event) => setCourtDraft({ ...courtDraft, sportLabel: event.target.value })}
+                        />
+                      </label>
+                      <label>
+                        السعر
+                        <input value={courtDraft.price} onChange={(event) => setCourtDraft({ ...courtDraft, price: event.target.value })} />
+                      </label>
+                      <label>
+                        وصف السعر
+                        <input
+                          value={courtDraft.priceLabel}
+                          onChange={(event) => setCourtDraft({ ...courtDraft, priceLabel: event.target.value })}
+                        />
+                      </label>
+                    </div>
+
+                    <label>
+                      الوصف
+                      <textarea
+                        rows="4"
+                        value={courtDraft.description}
+                        onChange={(event) => setCourtDraft({ ...courtDraft, description: event.target.value })}
+                      />
+                    </label>
+
+                    <label className="checkbox-row">
+                      <input
+                        type="checkbox"
+                        checked={courtDraft.isActive}
+                        onChange={(event) => setCourtDraft({ ...courtDraft, isActive: event.target.checked })}
+                      />
+                      <span>الملعب ظاهر على المنصة</span>
+                    </label>
+
+                    <div className="button-row">
+                      <button className="primary-btn" type="submit" disabled={savingCourt}>
+                        {savingCourt ? 'جارٍ الحفظ...' : 'حفظ بيانات الملعب'}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <p className="empty-state">مفيش ملاعب متاحة للتحرير.</p>
+                )}
+              </div>
+            </article>
+
+            <article className="table-panel">
+              <div className="table-head">
+                <div>
+                  <p className="eyebrow">User editor</p>
+                  <h3>تعديل مستخدم</h3>
+                </div>
+                <span className="dashboard-chip">{data?.users?.length || 0} account</span>
+              </div>
+
+              <div className="field-grid">
+                <label>
+                  اختيار مستخدم
+                  <select value={selectedUserId} onChange={(event) => setSelectedUserId(event.target.value)}>
+                    {(data?.users || []).map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {userDraft ? (
+                  <form className="editor-form" onSubmit={saveUser}>
+                    <div className="field-grid field-grid--two">
+                      <label>
+                        الاسم
+                        <input value={userDraft.name} onChange={(event) => setUserDraft({ ...userDraft, name: event.target.value })} />
+                      </label>
+                      <label>
+                        الهاتف
+                        <input value={userDraft.phone} onChange={(event) => setUserDraft({ ...userDraft, phone: event.target.value })} />
+                      </label>
+                      <label>
+                        الدور
+                        <select value={userDraft.role} onChange={(event) => setUserDraft({ ...userDraft, role: event.target.value })}>
+                          {roleOptions.map((role) => (
+                            <option key={role} value={role}>
+                              {roleLabels[role]}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+
+                    <div className="preview-card">
+                      <span className={`status-pill ${statusClass(userDraft.role)}`}>{roleLabels[userDraft.role] || userDraft.role}</span>
+                      <p className="table-note">التغيير هنا ينعكس فورًا على الصلاحيات الخاصة بالمستخدم.</p>
+                    </div>
+
+                    <div className="button-row">
+                      <button className="primary-btn" type="submit" disabled={savingUser}>
+                        {savingUser ? 'جارٍ الحفظ...' : 'حفظ بيانات المستخدم'}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <p className="empty-state">مفيش مستخدمين متاحين للتحرير.</p>
+                )}
+              </div>
+            </article>
+          </section>
+
           <article className="table-panel" id="users">
             <div className="table-head">
               <div>
@@ -126,7 +424,7 @@ export function AdminDashboard() {
                     <strong>{user.name}</strong>
                     <p className="table-note">{user.phone}</p>
                   </div>
-                  <span className={`status-pill ${tagClass(user.role)}`}>{roleLabels[user.role] || user.role}</span>
+                  <span className={`status-pill ${statusClass(user.role)}`}>{roleLabels[user.role] || user.role}</span>
                 </div>
               ))}
             </div>
@@ -139,13 +437,37 @@ export function AdminDashboard() {
                 <span className="dashboard-chip">{data?.courts?.length || 0}</span>
               </div>
               <p className="table-note">الملاعب المسجلة والمعروضة على المنصة.</p>
+              <div className="table-list compact">
+                {(data?.courts || []).slice(0, 4).map((court) => (
+                  <div key={court.id} className="table-row">
+                    <div>
+                      <strong>{court.name}</strong>
+                      <p className="table-note">
+                        {court.areaLabel} · {court.sportLabel}
+                      </p>
+                    </div>
+                    <span className="dashboard-chip">{court.isActive ? 'Active' : 'Hidden'}</span>
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="dashboard-card" id="bookings">
               <div className="dashboard-head">
                 <h3>الحجوزات</h3>
                 <span className="dashboard-chip">{data?.bookings?.length || 0}</span>
               </div>
-              <p className="table-note">معاينة الحجوزات الحالية لحل التعارضات بسرعة.</p>
+              <p className="table-note">مراجعة الحجوزات الحالية لحل التعارضات بسرعة.</p>
+              <div className="table-list compact">
+                {(data?.bookings || []).slice(0, 4).map((booking) => (
+                  <div key={booking.id} className="table-row">
+                    <div>
+                      <strong>{booking.customerName}</strong>
+                      <p className="table-note">{booking.court?.name || booking.courtId}</p>
+                    </div>
+                    <span className="dashboard-chip">{booking.status}</span>
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="dashboard-card" id="jobs">
               <div className="dashboard-head">
@@ -153,6 +475,17 @@ export function AdminDashboard() {
                 <span className="dashboard-chip">{data?.jobs?.length || 0}</span>
               </div>
               <p className="table-note">طلبات الصيانة والنطاق التشغيلي للفنيين.</p>
+              <div className="table-list compact">
+                {(data?.jobs || []).slice(0, 4).map((job) => (
+                  <div key={job.id} className="table-row">
+                    <div>
+                      <strong>{job.title}</strong>
+                      <p className="table-note">{job.category}</p>
+                    </div>
+                    <span className="dashboard-chip">{job.status}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </article>
         </div>

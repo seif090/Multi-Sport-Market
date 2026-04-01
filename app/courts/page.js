@@ -1,9 +1,9 @@
 import { SiteShell } from '@/components/site-shell'
 import { CourtsExplorer } from '@/components/courts-explorer'
-import { getAllCourts } from '@/lib/courts'
+import { getCourtsWithAvailability } from '@/lib/courts'
 
 export default async function CourtsPage() {
-  const courts = await getAllCourts()
+  const courts = await getCourtsWithAvailability()
 
   return (
     <SiteShell>

@@ -17,11 +17,14 @@ function CourtSummaryCard({ court }) {
           <p className="court-area">{court.areaLabel}</p>
           <h4 className="court-name">{court.name}</h4>
         </div>
-        <span className="court-badge">{court.badge}</span>
+        <span className={`availability-pill ${court.availableNow ? 'available' : 'busy'}`}>
+          {court.availableNow ? 'متاح الآن' : 'محجوز الآن'}
+        </span>
       </div>
       <div className="court-meta">
         <span>{court.sportLabel}</span>
         <span>السعر: {court.priceLabel}</span>
+        <span>{court.availabilityLabel}</span>
       </div>
       <p className="court-desc">{court.description}</p>
       <div className="court-actions">
@@ -37,6 +40,7 @@ export function CourtsExplorer({ courts }) {
   const [query, setQuery] = useState('')
   const [area, setArea] = useState('all')
   const [sport, setSport] = useState('all')
+  const [availability, setAvailability] = useState('all')
   const [sortBy, setSortBy] = useState('name')
   const [page, setPage] = useState(1)
   const pageSize = 6
@@ -54,7 +58,8 @@ export function CourtsExplorer({ courts }) {
       return (
         matchesQuery &&
         (area === 'all' || court.area === area) &&
-        (sport === 'all' || court.sport === sport)
+        (sport === 'all' || court.sport === sport) &&
+        (availability === 'all' || Boolean(court.availableNow) === (availability === 'now'))
       )
     })
 
@@ -63,9 +68,10 @@ export function CourtsExplorer({ courts }) {
       if (sortBy === 'price-asc') return (priceRank[left.price] || 0) - (priceRank[right.price] || 0)
       if (sortBy === 'price-desc') return (priceRank[right.price] || 0) - (priceRank[left.price] || 0)
       if (sortBy === 'area') return left.areaLabel.localeCompare(right.areaLabel, 'ar')
+      if (sortBy === 'availability') return Number(right.availableNow) - Number(left.availableNow)
       return 0
     })
-  }, [area, courts, query, sortBy, sport])
+  }, [area, availability, courts, query, sortBy, sport])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
   const currentPage = Math.min(page, totalPages)
@@ -77,7 +83,7 @@ export function CourtsExplorer({ courts }) {
         <p className="eyebrow">Public courts</p>
         <h2>كل الملاعب المتاحة</h2>
         <p className="hero-text">
-          استعرض الملاعب، اعرف تفاصيل كل ملعب، وافتح صفحة التوافر المباشر لأي ملعب قبل الحجز.
+          استعرض الملاعب، اعرف تفاصيل كل ملعب، وفعّل فلتر المتاح الآن فقط للوصول السريع لأقرب وقت متاح.
         </p>
       </section>
 
@@ -135,6 +141,19 @@ export function CourtsExplorer({ courts }) {
             </select>
           </label>
           <label>
+            التوافر
+            <select
+              value={availability}
+              onChange={(event) => {
+                setPage(1)
+                setAvailability(event.target.value)
+              }}
+            >
+              <option value="all">كل الملاعب</option>
+              <option value="now">المتاح الآن فقط</option>
+            </select>
+          </label>
+          <label>
             الفرز
             <select
               value={sortBy}
@@ -147,6 +166,7 @@ export function CourtsExplorer({ courts }) {
               <option value="area">المنطقة</option>
               <option value="price-asc">السعر من الأقل</option>
               <option value="price-desc">السعر من الأعلى</option>
+              <option value="availability">الأكثر توافرًا</option>
             </select>
           </label>
           <div className="button-row">
@@ -157,6 +177,7 @@ export function CourtsExplorer({ courts }) {
                 setQuery('')
                 setArea('all')
                 setSport('all')
+                setAvailability('all')
                 setSortBy('name')
                 setPage(1)
               }}
@@ -177,7 +198,7 @@ export function CourtsExplorer({ courts }) {
           {visibleCourts.length === 0 ? (
             <article className="court-card">
               <h4>مفيش نتائج مطابقة</h4>
-              <p className="court-desc">غيّر كلمات البحث أو الفلاتر وجرّب تاني.</p>
+              <p className="court-desc">غيّر كلمات البحث أو الفلاتر وجرب تاني.</p>
             </article>
           ) : (
             visibleCourts.map((court) => <CourtSummaryCard key={court.id} court={court} />)
