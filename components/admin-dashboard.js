@@ -588,6 +588,29 @@ export function AdminDashboard() {
     downloadCsv('bookings-export.csv', rows)
   }
 
+  function exportUsersCsv() {
+    const rows = [
+      ['الاسم', 'الهاتف', 'الدور', 'الحالة'],
+      ...visibleUsers.map((user) => [user.name, user.phone, roleLabels[user.role] || user.role, user.isActive === false ? 'Hidden' : 'Active']),
+    ]
+    downloadCsv('users-export.csv', rows)
+  }
+
+  function exportJobsCsv() {
+    const rows = [
+      ['العنوان', 'الفئة', 'الملعب', 'العميل', 'الحالة', 'ملاحظات'],
+      ...visibleJobs.map((job) => [
+        job.title,
+        job.category,
+        job.vendorName,
+        job.customerName,
+        job.status,
+        job.notes || '',
+      ]),
+    ]
+    downloadCsv('jobs-export.csv', rows)
+  }
+
   return (
     <main className="dashboard">
       <div className="dashboard-head">
@@ -661,10 +684,16 @@ export function AdminDashboard() {
         </div>
         <div className="button-row">
           <button className="secondary-btn" type="button" onClick={exportCourtsCsv}>
-            Export courts CSV
+            Export filtered courts CSV
           </button>
           <button className="secondary-btn" type="button" onClick={exportBookingsCsv}>
-            Export bookings CSV
+            Export filtered bookings CSV
+          </button>
+          <button className="secondary-btn" type="button" onClick={exportUsersCsv}>
+            Export filtered users CSV
+          </button>
+          <button className="secondary-btn" type="button" onClick={exportJobsCsv}>
+            Export filtered jobs CSV
           </button>
         </div>
       </section>

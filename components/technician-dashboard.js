@@ -139,9 +139,6 @@ export function TechnicianDashboard() {
           <button className="secondary-btn" type="button">
             ملف التقييم
           </button>
-          <button className="secondary-btn" type="button" onClick={exportJobsCsv}>
-            Export jobs CSV
-          </button>
         </div>
       </div>
 
@@ -155,6 +152,63 @@ export function TechnicianDashboard() {
       </section>
 
       {error ? <p className="empty-state">{error}</p> : null}
+
+      <section className="panel admin-toolbar">
+        <div>
+          <p className="eyebrow">Bulk controls</p>
+          <h3>إدارة جماعية لطلبات الصيانة</h3>
+        </div>
+        <div className="admin-toolbar__filters">
+          <label>
+            فلتر الحالة
+            <select value={jobFilter} onChange={(event) => setJobFilter(event.target.value)}>
+              <option value="all">الكل</option>
+              <option value="new">جديد</option>
+              <option value="accepted">مقبول</option>
+              <option value="completed">مكتمل</option>
+              <option value="cancelled">ملغي</option>
+            </select>
+          </label>
+        </div>
+        <div className="button-row">
+          <button
+            className="secondary-btn"
+            type="button"
+            disabled={!selectedJobIds.length}
+            onClick={() => bulkUpdateJobs('accept')}
+          >
+            قبول المحدد
+          </button>
+          <button
+            className="secondary-btn"
+            type="button"
+            disabled={!selectedJobIds.length}
+            onClick={() => bulkUpdateJobs('complete')}
+          >
+            إكمال المحدد
+          </button>
+          <button
+            className="secondary-btn"
+            type="button"
+            disabled={!selectedJobIds.length}
+            onClick={() => bulkUpdateJobs('cancel')}
+          >
+            إلغاء المحدد
+          </button>
+          <button className="secondary-btn" type="button" onClick={() => setAllJobsSelected(true)}>
+            تحديد الكل
+          </button>
+          <button className="secondary-btn" type="button" onClick={() => setAllJobsSelected(false)}>
+            إلغاء الكل
+          </button>
+          <button className="secondary-btn" type="button" onClick={exportJobsCsv}>
+            Export jobs CSV
+          </button>
+          <span className="dashboard-chip">
+            {selectedJobIds.length}/{visibleJobs.length}
+          </span>
+        </div>
+      </section>
 
       <section className="dashboard-layout">
         <aside className="sidebar">
@@ -187,61 +241,6 @@ export function TechnicianDashboard() {
                 <h3>طلبات الصيانة</h3>
               </div>
               <span className="dashboard-chip">Warranty enabled</span>
-            </div>
-
-            <div className="dashboard-toolbar">
-              <div className="button-row">
-                <button className="secondary-btn" type="button" onClick={() => setJobFilter('all')}>
-                  الكل
-                </button>
-                <button className="secondary-btn" type="button" onClick={() => setJobFilter('new')}>
-                  جديد
-                </button>
-                <button className="secondary-btn" type="button" onClick={() => setJobFilter('accepted')}>
-                  مقبول
-                </button>
-                <button className="secondary-btn" type="button" onClick={() => setJobFilter('completed')}>
-                  مكتمل
-                </button>
-                <button className="secondary-btn" type="button" onClick={() => setJobFilter('cancelled')}>
-                  ملغي
-                </button>
-              </div>
-              <div className="button-row">
-                <button
-                  className="secondary-btn"
-                  type="button"
-                  disabled={!selectedJobIds.length}
-                  onClick={() => bulkUpdateJobs('accept')}
-                >
-                  قبول المحدد
-                </button>
-                <button
-                  className="secondary-btn"
-                  type="button"
-                  disabled={!selectedJobIds.length}
-                  onClick={() => bulkUpdateJobs('complete')}
-                >
-                  إكمال المحدد
-                </button>
-                <button
-                  className="secondary-btn"
-                  type="button"
-                  disabled={!selectedJobIds.length}
-                  onClick={() => bulkUpdateJobs('cancel')}
-                >
-                  إلغاء المحدد
-                </button>
-                <button className="secondary-btn" type="button" onClick={() => setAllJobsSelected(true)}>
-                  تحديد الكل
-                </button>
-                <button className="secondary-btn" type="button" onClick={() => setAllJobsSelected(false)}>
-                  إلغاء الكل
-                </button>
-                <span className="dashboard-chip">
-                  {selectedJobIds.length}/{visibleJobs.length}
-                </span>
-              </div>
             </div>
 
             <div className="table-list">

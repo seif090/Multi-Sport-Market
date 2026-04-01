@@ -194,12 +194,6 @@ export function VendorDashboard() {
           <button className="secondary-btn" type="button">
             طلب صيانة
           </button>
-          <button className="secondary-btn" type="button" onClick={exportBookingsCsv}>
-            Export bookings CSV
-          </button>
-          <button className="secondary-btn" type="button" onClick={exportMaintenanceCsv}>
-            Export maintenance CSV
-          </button>
         </div>
       </div>
 
@@ -213,6 +207,57 @@ export function VendorDashboard() {
       </section>
 
       {error ? <p className="empty-state">{error}</p> : null}
+
+      <section className="panel admin-toolbar">
+        <div>
+          <p className="eyebrow">Bulk controls</p>
+          <h3>إدارة جماعية للحجوزات</h3>
+        </div>
+        <div className="admin-toolbar__filters">
+          <label>
+            فلتر الحجز
+            <select value={bookingFilter} onChange={(event) => setBookingFilter(event.target.value)}>
+              <option value="all">الكل</option>
+              <option value="pending">معلق</option>
+              <option value="confirmed">مؤكد</option>
+              <option value="cancelled">ملغي</option>
+            </select>
+          </label>
+        </div>
+        <div className="button-row">
+          <button
+            className="secondary-btn"
+            type="button"
+            disabled={!selectedBookingIds.length}
+            onClick={() => bulkUpdateBookings('confirm')}
+          >
+            تأكيد المحدد
+          </button>
+          <button
+            className="secondary-btn"
+            type="button"
+            disabled={!selectedBookingIds.length}
+            onClick={() => bulkUpdateBookings('cancel')}
+          >
+            إلغاء المحدد
+          </button>
+          <button className="secondary-btn" type="button" onClick={() => setAllBookingsSelected(true)}>
+            تحديد الكل
+          </button>
+          <button className="secondary-btn" type="button" onClick={() => setAllBookingsSelected(false)}>
+            إلغاء الكل
+          </button>
+          <button className="secondary-btn" type="button" onClick={exportBookingsCsv}>
+            Export bookings CSV
+          </button>
+          <button className="secondary-btn" type="button" onClick={exportMaintenanceCsv}>
+            Export maintenance CSV
+          </button>
+          <span className="dashboard-chip">
+            {selectedBookingIds.length}/{visibleBookings.length}
+          </span>
+        </div>
+      </section>
 
       <section className="dashboard-layout">
         <aside className="sidebar">
