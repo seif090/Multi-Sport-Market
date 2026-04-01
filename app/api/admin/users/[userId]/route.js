@@ -48,3 +48,86 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ error: 'Unable to update user' }, { status: 500 })
   }
 }
+
+export async function DELETE(request, { params }) {
+  const admin = await getAdminUser()
+  if (!admin) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const { userId } = await params
+  const prisma = getPrisma()
+
+  try {
+    if (userId === admin.id) {
+      return NextResponse.json({ error: 'You cannot delete your own admin account' }, { status: 409 })
+    }
+
+    if (!prisma) {
+      const userIndex = memoryStore.users.findIndex((item) => item.id === userId)
+      if (userIndex === -1) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
+
+      const target = memoryStore.users[userIndex]
+      if (target.role === 'ADMIN') {
+        const adminCount = memoryStore.users.filter((item) => item.role === 'ADMIN').length
+        if (adminCount <= 1) {
+          return NextResponse.json({ error: 'You must keep at least one admin account' }, { status: 409 })
+        }
+      }
+
+      const linkedCourt = memoryStore.courts.some((court) => court.vendorId === userId)
+      const linkedBookings = memoryStore.bookings.some((booking) => booking.userId === userId)
+      const linkedJobs = memoryStore.maintenanceJobs.some(
+        (job) => job.vendorId === userId || job.technicianId === userId
+      )
+
+      if (linkedCourt || linkedBookings || linkedJobs) {
+        return NextResponse.json({ error: 'Cannot delete a user with linked records' }, { status: 409 })
+      }
+
+      const [removed] = memoryStore.users.splice(userIndex, 1)
+      return NextResponse.json({ user: removed })
+    }
+
+    const target = await prisma.user.findUnique({
+      where: { id: userId },
+    })
+
+    if (!target) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    if (target.role === 'ADMIN') {
+      const adminCount = await prisma.user.count({
+        where: { role: 'ADMIN' },
+      })
+      if (adminCount <= 1) {
+        return NextResponse.json({ error: 'You must keep at least one admin account' }, { status: 409 })
+      }
+    }
+
+    const [linkedCourt, linkedBookings, linkedJobs] = await Promise.all([
+      prisma.court.count({ where: { vendorId: userId } }),
+      prisma.booking.count({ where: { userId } }),
+      prisma.maintenanceJob.count({
+        where: {
+          OR: [{ vendorId: userId }, { technicianId: userId }],
+        },
+      }),
+    ])
+
+    if (linkedCourt > 0 || linkedBookings > 0 || linkedJobs > 0) {
+      return NextResponse.json({ error: 'Cannot delete a user with linked records' }, { status: 409 })
+    }
+
+    const removed = await prisma.user.delete({
+      where: { id: userId },
+    })
+
+    return NextResponse.json({ user: removed })
+  } catch (error) {
+    return NextResponse.json({ error: 'Unable to delete user' }, { status: 500 })
+  }
+}

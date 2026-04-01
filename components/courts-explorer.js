@@ -1,12 +1,57 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 const priceRank = {
   low: 1,
   mid: 2,
   high: 3,
+}
+
+const allowedSorts = new Set(['name', 'price-asc', 'price-desc', 'area', 'availability'])
+
+function normalizeFilters(source = {}) {
+  const query = typeof source.q === 'string' ? source.q : ''
+  const area = typeof source.area === 'string' ? source.area : 'all'
+  const sport = typeof source.sport === 'string' ? source.sport : 'all'
+  const availability = source.availability === 'now' ? 'now' : 'all'
+  const sortBy = allowedSorts.has(source.sortBy) ? source.sortBy : 'name'
+  const pageNumber = Number.parseInt(source.page, 10)
+
+  return {
+    query,
+    area,
+    sport,
+    availability,
+    sortBy,
+    page: Number.isFinite(pageNumber) && pageNumber > 0 ? pageNumber : 1,
+  }
+}
+
+function serializeFilters(filters) {
+  const params = new URLSearchParams()
+
+  if (filters.query) params.set('q', filters.query)
+  if (filters.area !== 'all') params.set('area', filters.area)
+  if (filters.sport !== 'all') params.set('sport', filters.sport)
+  if (filters.availability !== 'all') params.set('availability', filters.availability)
+  if (filters.sortBy !== 'name') params.set('sortBy', filters.sortBy)
+  if (filters.page > 1) params.set('page', String(filters.page))
+
+  return params.toString()
+}
+
+function filtersEqual(left, right) {
+  return (
+    left.query === right.query &&
+    left.area === right.area &&
+    left.sport === right.sport &&
+    left.availability === right.availability &&
+    left.sortBy === right.sortBy &&
+    left.page === right.page
+  )
 }
 
 function CourtSummaryCard({ court }) {
@@ -36,17 +81,31 @@ function CourtSummaryCard({ court }) {
   )
 }
 
-export function CourtsExplorer({ courts }) {
-  const [query, setQuery] = useState('')
-  const [area, setArea] = useState('all')
-  const [sport, setSport] = useState('all')
-  const [availability, setAvailability] = useState('all')
-  const [sortBy, setSortBy] = useState('name')
-  const [page, setPage] = useState(1)
-  const pageSize = 6
+export function CourtsExplorer({ courts, initialFilters }) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [filters, setFilters] = useState(() => normalizeFilters(initialFilters))
+
+  useEffect(() => {
+    const nextFilters = normalizeFilters(Object.fromEntries(searchParams.entries()))
+    setFilters((current) => (filtersEqual(current, nextFilters) ? current : nextFilters))
+  }, [searchParams])
+
+  useEffect(() => {
+    const nextQuery = serializeFilters(filters)
+    const currentQuery = searchParams.toString()
+
+    if (nextQuery === currentQuery) {
+      return
+    }
+
+    const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname
+    router.replace(nextUrl, { scroll: false })
+  }, [filters, pathname, router, searchParams])
 
   const filtered = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase()
+    const normalizedQuery = filters.query.trim().toLowerCase()
 
     const items = courts.filter((court) => {
       const matchesQuery =
@@ -57,25 +116,46 @@ export function CourtsExplorer({ courts }) {
 
       return (
         matchesQuery &&
-        (area === 'all' || court.area === area) &&
-        (sport === 'all' || court.sport === sport) &&
-        (availability === 'all' || Boolean(court.availableNow) === (availability === 'now'))
+        (filters.area === 'all' || court.area === filters.area) &&
+        (filters.sport === 'all' || court.sport === filters.sport) &&
+        (filters.availability === 'all' || Boolean(court.availableNow) === (filters.availability === 'now'))
       )
     })
 
     return [...items].sort((left, right) => {
-      if (sortBy === 'name') return left.name.localeCompare(right.name, 'ar')
-      if (sortBy === 'price-asc') return (priceRank[left.price] || 0) - (priceRank[right.price] || 0)
-      if (sortBy === 'price-desc') return (priceRank[right.price] || 0) - (priceRank[left.price] || 0)
-      if (sortBy === 'area') return left.areaLabel.localeCompare(right.areaLabel, 'ar')
-      if (sortBy === 'availability') return Number(right.availableNow) - Number(left.availableNow)
+      if (filters.sortBy === 'name') return left.name.localeCompare(right.name, 'ar')
+      if (filters.sortBy === 'price-asc') return (priceRank[left.price] || 0) - (priceRank[right.price] || 0)
+      if (filters.sortBy === 'price-desc') return (priceRank[right.price] || 0) - (priceRank[left.price] || 0)
+      if (filters.sortBy === 'area') return left.areaLabel.localeCompare(right.areaLabel, 'ar')
+      if (filters.sortBy === 'availability') return Number(right.availableNow) - Number(left.availableNow)
       return 0
     })
-  }, [area, availability, courts, query, sortBy, sport])
+  }, [courts, filters])
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
-  const currentPage = Math.min(page, totalPages)
-  const visibleCourts = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  const totalPages = Math.max(1, Math.ceil(filtered.length / 6))
+  const currentPage = Math.min(filters.page, totalPages)
+  const visibleCourts = filtered.slice((currentPage - 1) * 6, currentPage * 6)
+
+  useEffect(() => {
+    if (filters.page !== currentPage) {
+      setFilters((current) => (current.page === currentPage ? current : { ...current, page: currentPage }))
+    }
+  }, [currentPage, filters.page])
+
+  function patchFilters(patch, resetPage = true) {
+    setFilters((current) => ({
+      ...current,
+      ...patch,
+      page: resetPage ? 1 : patch.page ?? current.page,
+    }))
+  }
+
+  function setPage(page) {
+    setFilters((current) => ({
+      ...current,
+      page,
+    }))
+  }
 
   return (
     <>
@@ -93,30 +173,21 @@ export function CourtsExplorer({ courts }) {
             <p className="eyebrow">Courts index</p>
             <h3>قائمة عامة</h3>
           </div>
-          <p>القائمة دي بتشتغل من نفس مصدر البيانات الداخلي سواء قاعدة البيانات أو الـ fallback.</p>
+          <p>الفلاتر محفوظة في الرابط، فتعرف ترجع لنفس البحث بعد الريفرش أو المشاركة.</p>
         </div>
 
         <div className="courts-toolbar panel">
           <label>
             البحث
             <input
-              value={query}
-              onChange={(event) => {
-                setPage(1)
-                setQuery(event.target.value)
-              }}
+              value={filters.query}
+              onChange={(event) => patchFilters({ query: event.target.value })}
               placeholder="ابحث بالاسم أو المنطقة أو الرياضة"
             />
           </label>
           <label>
             المنطقة
-            <select
-              value={area}
-              onChange={(event) => {
-                setPage(1)
-                setArea(event.target.value)
-              }}
-            >
+            <select value={filters.area} onChange={(event) => patchFilters({ area: event.target.value })}>
               <option value="all">كل المناطق</option>
               <option value="smouha">سموحة</option>
               <option value="sidi-gaber">سيدي جابر</option>
@@ -126,13 +197,7 @@ export function CourtsExplorer({ courts }) {
           </label>
           <label>
             الرياضة
-            <select
-              value={sport}
-              onChange={(event) => {
-                setPage(1)
-                setSport(event.target.value)
-              }}
-            >
+            <select value={filters.sport} onChange={(event) => patchFilters({ sport: event.target.value })}>
               <option value="all">كل الرياضات</option>
               <option value="football">كرة قدم</option>
               <option value="padel">بادل</option>
@@ -142,26 +207,14 @@ export function CourtsExplorer({ courts }) {
           </label>
           <label>
             التوافر
-            <select
-              value={availability}
-              onChange={(event) => {
-                setPage(1)
-                setAvailability(event.target.value)
-              }}
-            >
+            <select value={filters.availability} onChange={(event) => patchFilters({ availability: event.target.value })}>
               <option value="all">كل الملاعب</option>
               <option value="now">المتاح الآن فقط</option>
             </select>
           </label>
           <label>
             الفرز
-            <select
-              value={sortBy}
-              onChange={(event) => {
-                setPage(1)
-                setSortBy(event.target.value)
-              }}
-            >
+            <select value={filters.sortBy} onChange={(event) => patchFilters({ sortBy: event.target.value })}>
               <option value="name">الاسم</option>
               <option value="area">المنطقة</option>
               <option value="price-asc">السعر من الأقل</option>
@@ -173,14 +226,16 @@ export function CourtsExplorer({ courts }) {
             <button
               className="secondary-btn"
               type="button"
-              onClick={() => {
-                setQuery('')
-                setArea('all')
-                setSport('all')
-                setAvailability('all')
-                setSortBy('name')
-                setPage(1)
-              }}
+              onClick={() =>
+                setFilters({
+                  query: '',
+                  area: 'all',
+                  sport: 'all',
+                  availability: 'all',
+                  sortBy: 'name',
+                  page: 1,
+                })
+              }
             >
               إعادة الضبط
             </button>
@@ -210,7 +265,7 @@ export function CourtsExplorer({ courts }) {
             className="secondary-btn"
             type="button"
             disabled={currentPage <= 1}
-            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            onClick={() => setPage(Math.max(1, currentPage - 1))}
           >
             السابق
           </button>
@@ -218,7 +273,7 @@ export function CourtsExplorer({ courts }) {
             className="secondary-btn"
             type="button"
             disabled={currentPage >= totalPages}
-            onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+            onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
           >
             التالي
           </button>

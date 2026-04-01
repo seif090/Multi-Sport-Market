@@ -53,17 +53,44 @@ function createUserDraft(user) {
   }
 }
 
+function createEmptyCourtDraft() {
+  return {
+    name: '',
+    area: 'smouha',
+    areaLabel: 'سموحة',
+    sport: 'football',
+    sportLabel: 'كرة قدم',
+    price: 'mid',
+    priceLabel: 'متوسط',
+    badge: 'New',
+    description: '',
+    isActive: true,
+  }
+}
+
+function createEmptyUserDraft() {
+  return {
+    name: '',
+    phone: '',
+    role: 'PLAYER',
+  }
+}
+
 export function AdminDashboard() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [savingCourt, setSavingCourt] = useState(false)
   const [savingUser, setSavingUser] = useState(false)
+  const [creatingCourt, setCreatingCourt] = useState(false)
+  const [creatingUser, setCreatingUser] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [selectedCourtId, setSelectedCourtId] = useState('')
   const [selectedUserId, setSelectedUserId] = useState('')
   const [courtDraft, setCourtDraft] = useState(null)
   const [userDraft, setUserDraft] = useState(null)
+  const [newCourtDraft, setNewCourtDraft] = useState(createEmptyCourtDraft())
+  const [newUserDraft, setNewUserDraft] = useState(createEmptyUserDraft())
 
   async function loadData() {
     try {
@@ -154,6 +181,59 @@ export function AdminDashboard() {
     }
   }
 
+  async function createCourt(event) {
+    event.preventDefault()
+    setCreatingCourt(true)
+    setError('')
+    setNotice('')
+
+    try {
+      const response = await fetch('/api/admin/courts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newCourtDraft),
+      })
+      const payload = await response.json()
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'تعذر إنشاء الملعب')
+      }
+
+      setNewCourtDraft(createEmptyCourtDraft())
+      setNotice(`تم إنشاء الملعب ${payload?.court?.name || ''}`.trim())
+      window.dispatchEvent(new Event('msm:data-changed'))
+    } catch (createError) {
+      setError(createError instanceof Error ? createError.message : 'تعذر إنشاء الملعب')
+    } finally {
+      setCreatingCourt(false)
+    }
+  }
+
+  async function deleteCourt(courtId, courtName) {
+    if (!window.confirm(`حذف الملعب "${courtName}" نهائيًا؟`)) {
+      return
+    }
+
+    setError('')
+    setNotice('')
+
+    try {
+      const response = await fetch(`/api/admin/courts/${courtId}`, {
+        method: 'DELETE',
+      })
+      const payload = await response.json()
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'تعذر حذف الملعب')
+      }
+
+      setNotice(`تم حذف الملعب ${payload?.court?.name || courtName}`.trim())
+      window.dispatchEvent(new Event('msm:data-changed'))
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'تعذر حذف الملعب')
+    }
+  }
+
   async function saveUser(event) {
     event.preventDefault()
     if (!userDraft) return
@@ -180,6 +260,59 @@ export function AdminDashboard() {
       setError(saveError instanceof Error ? saveError.message : 'تعذر حفظ بيانات المستخدم')
     } finally {
       setSavingUser(false)
+    }
+  }
+
+  async function createUser(event) {
+    event.preventDefault()
+    setCreatingUser(true)
+    setError('')
+    setNotice('')
+
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newUserDraft),
+      })
+      const payload = await response.json()
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'تعذر إنشاء المستخدم')
+      }
+
+      setNewUserDraft(createEmptyUserDraft())
+      setNotice(`تم إنشاء المستخدم ${payload?.user?.name || ''}`.trim())
+      window.dispatchEvent(new Event('msm:data-changed'))
+    } catch (createError) {
+      setError(createError instanceof Error ? createError.message : 'تعذر إنشاء المستخدم')
+    } finally {
+      setCreatingUser(false)
+    }
+  }
+
+  async function deleteUser(userId, userName) {
+    if (!window.confirm(`حذف المستخدم "${userName}" نهائيًا؟`)) {
+      return
+    }
+
+    setError('')
+    setNotice('')
+
+    try {
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE',
+      })
+      const payload = await response.json()
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'تعذر حذف المستخدم')
+      }
+
+      setNotice(`تم حذف المستخدم ${payload?.user?.name || userName}`.trim())
+      window.dispatchEvent(new Event('msm:data-changed'))
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'تعذر حذف المستخدم')
     }
   }
 
@@ -220,14 +353,155 @@ export function AdminDashboard() {
       {error ? <p className="empty-state">{error}</p> : null}
       {notice ? <p className="notice-state">{notice}</p> : null}
 
+      <section className="dashboard-grid" id="creators">
+        <article className="table-panel">
+          <div className="table-head">
+            <div>
+              <p className="eyebrow">Create court</p>
+              <h3>إضافة ملعب جديد</h3>
+            </div>
+          </div>
+          <form className="editor-form" onSubmit={createCourt}>
+            <div className="field-grid field-grid--two">
+              <label>
+                الاسم
+                <input
+                  value={newCourtDraft.name}
+                  onChange={(event) => setNewCourtDraft({ ...newCourtDraft, name: event.target.value })}
+                />
+              </label>
+              <label>
+                الشارة
+                <input
+                  value={newCourtDraft.badge}
+                  onChange={(event) => setNewCourtDraft({ ...newCourtDraft, badge: event.target.value })}
+                />
+              </label>
+              <label>
+                المنطقة
+                <input
+                  value={newCourtDraft.area}
+                  onChange={(event) => setNewCourtDraft({ ...newCourtDraft, area: event.target.value })}
+                />
+              </label>
+              <label>
+                اسم المنطقة
+                <input
+                  value={newCourtDraft.areaLabel}
+                  onChange={(event) => setNewCourtDraft({ ...newCourtDraft, areaLabel: event.target.value })}
+                />
+              </label>
+              <label>
+                الرياضة
+                <input
+                  value={newCourtDraft.sport}
+                  onChange={(event) => setNewCourtDraft({ ...newCourtDraft, sport: event.target.value })}
+                />
+              </label>
+              <label>
+                اسم الرياضة
+                <input
+                  value={newCourtDraft.sportLabel}
+                  onChange={(event) => setNewCourtDraft({ ...newCourtDraft, sportLabel: event.target.value })}
+                />
+              </label>
+              <label>
+                السعر
+                <input
+                  value={newCourtDraft.price}
+                  onChange={(event) => setNewCourtDraft({ ...newCourtDraft, price: event.target.value })}
+                />
+              </label>
+              <label>
+                وصف السعر
+                <input
+                  value={newCourtDraft.priceLabel}
+                  onChange={(event) => setNewCourtDraft({ ...newCourtDraft, priceLabel: event.target.value })}
+                />
+              </label>
+            </div>
+            <label>
+              الوصف
+              <textarea
+                rows="4"
+                value={newCourtDraft.description}
+                onChange={(event) => setNewCourtDraft({ ...newCourtDraft, description: event.target.value })}
+              />
+            </label>
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={newCourtDraft.isActive}
+                onChange={(event) => setNewCourtDraft({ ...newCourtDraft, isActive: event.target.checked })}
+              />
+              <span>ظاهر على المنصة</span>
+            </label>
+            <div className="button-row">
+              <button className="primary-btn" type="submit" disabled={creatingCourt}>
+                {creatingCourt ? 'جارٍ الإنشاء...' : 'إنشاء ملعب'}
+              </button>
+            </div>
+          </form>
+        </article>
+
+        <article className="table-panel">
+          <div className="table-head">
+            <div>
+              <p className="eyebrow">Create user</p>
+              <h3>إضافة مستخدم جديد</h3>
+            </div>
+          </div>
+          <form className="editor-form" onSubmit={createUser}>
+            <div className="field-grid field-grid--two">
+              <label>
+                الاسم
+                <input
+                  value={newUserDraft.name}
+                  onChange={(event) => setNewUserDraft({ ...newUserDraft, name: event.target.value })}
+                />
+              </label>
+              <label>
+                الهاتف
+                <input
+                  value={newUserDraft.phone}
+                  onChange={(event) => setNewUserDraft({ ...newUserDraft, phone: event.target.value })}
+                />
+              </label>
+              <label>
+                الدور
+                <select value={newUserDraft.role} onChange={(event) => setNewUserDraft({ ...newUserDraft, role: event.target.value })}>
+                  {roleOptions.map((role) => (
+                    <option key={role} value={role}>
+                      {roleLabels[role]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="preview-card">
+              <span className={`status-pill ${statusClass(newUserDraft.role)}`}>{roleLabels[newUserDraft.role]}</span>
+              <p className="table-note">أدخل حسابًا جديدًا لتجربة الصلاحيات أو ربط مالك/فني جديد.</p>
+            </div>
+            <div className="button-row">
+              <button className="primary-btn" type="submit" disabled={creatingUser}>
+                {creatingUser ? 'جارٍ الإنشاء...' : 'إنشاء مستخدم'}
+              </button>
+            </div>
+          </form>
+        </article>
+      </section>
+
       <section className="dashboard-layout">
         <aside className="sidebar">
           <div className="sidebar-panel">
             <p className="eyebrow">Admin</p>
             <h3>مسارات الإدارة</h3>
             <div className="sidebar-nav">
-              <a className="sidebar-link active" href="#editors">
-                التعديل السريع
+              <a className="sidebar-link active" href="#creators">
+                الإضافة
+              </a>
+              <a className="sidebar-link" href="#editors">
+                التعديل
               </a>
               <a className="sidebar-link" href="#users">
                 المستخدمين
@@ -245,9 +519,7 @@ export function AdminDashboard() {
           </div>
           <div className="sidebar-panel">
             <div className="sidebar-step">A</div>
-            <p className="form-hint">
-              الأدمِن يقدر يراجع كل الكيانات ويعدل الملاعب والمستخدمين مباشرة من نفس اللوحة.
-            </p>
+            <p className="form-hint">الأدمِن يقدر يراجع كل الكيانات ويضيف أو يعدل أو يحذف من نفس اللوحة.</p>
           </div>
         </aside>
 
@@ -424,7 +696,15 @@ export function AdminDashboard() {
                     <strong>{user.name}</strong>
                     <p className="table-note">{user.phone}</p>
                   </div>
-                  <span className={`status-pill ${statusClass(user.role)}`}>{roleLabels[user.role] || user.role}</span>
+                  <div className="row-actions">
+                    <button className="secondary-btn" type="button" onClick={() => setSelectedUserId(user.id)}>
+                      تحرير
+                    </button>
+                    <button className="danger-btn" type="button" onClick={() => deleteUser(user.id, user.name)}>
+                      حذف
+                    </button>
+                    <span className={`status-pill ${statusClass(user.role)}`}>{roleLabels[user.role] || user.role}</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -438,7 +718,7 @@ export function AdminDashboard() {
               </div>
               <p className="table-note">الملاعب المسجلة والمعروضة على المنصة.</p>
               <div className="table-list compact">
-                {(data?.courts || []).slice(0, 4).map((court) => (
+                {(data?.courts || []).slice(0, 6).map((court) => (
                   <div key={court.id} className="table-row">
                     <div>
                       <strong>{court.name}</strong>
@@ -446,7 +726,17 @@ export function AdminDashboard() {
                         {court.areaLabel} · {court.sportLabel}
                       </p>
                     </div>
-                    <span className="dashboard-chip">{court.isActive ? 'Active' : 'Hidden'}</span>
+                    <div className="row-actions">
+                      <button className="secondary-btn" type="button" onClick={() => setSelectedCourtId(court.id)}>
+                        تحرير
+                      </button>
+                      <button className="danger-btn" type="button" onClick={() => deleteCourt(court.id, court.name)}>
+                        حذف
+                      </button>
+                      <span className={`status-pill ${court.isActive ? 'status-accepted' : 'status-cancelled'}`}>
+                        {court.isActive ? 'Active' : 'Hidden'}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>

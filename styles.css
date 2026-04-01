@@ -259,6 +259,28 @@ textarea:focus {
   transform: translateY(-1px);
 }
 
+.danger-btn {
+  border: 1px solid rgba(255, 109, 109, 0.24);
+  border-radius: 16px;
+  padding: 13px 18px;
+  cursor: pointer;
+  transition: 180ms ease;
+  font-weight: 700;
+  background: rgba(255, 109, 109, 0.12);
+  color: #ffb1b1;
+}
+
+.danger-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 109, 109, 0.18);
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .section {
   margin-top: 34px;
 }
@@ -533,6 +555,22 @@ textarea:focus {
   display: block;
 }
 
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.empty-state {
+  margin: 16px 0 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -727,6 +765,10 @@ textarea:focus {
   .section-head {
     align-items: start;
     flex-direction: column;
+  }
+
+  .row-actions {
+    justify-content: flex-start;
   }
 }
 
