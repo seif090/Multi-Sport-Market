@@ -24,6 +24,32 @@ function statusClass(role) {
   }
 }
 
+function bookingStatusClass(status) {
+  switch (status) {
+    case 'CONFIRMED':
+      return 'status-accepted'
+    case 'PENDING':
+      return 'status-new'
+    case 'CANCELLED':
+      return 'status-cancelled'
+    default:
+      return 'status-new'
+  }
+}
+
+function maintenanceStatusClass(status) {
+  switch (status) {
+    case 'COMPLETED':
+      return 'status-accepted'
+    case 'ACCEPTED':
+      return 'status-completed'
+    case 'CANCELLED':
+      return 'status-cancelled'
+    default:
+      return 'status-new'
+  }
+}
+
 function createCourtDraft(court) {
   if (!court) return null
 
@@ -91,6 +117,9 @@ export function AdminDashboard() {
   const [selectedUserId, setSelectedUserId] = useState('')
   const [selectedCourtIds, setSelectedCourtIds] = useState([])
   const [selectedUserIds, setSelectedUserIds] = useState([])
+  const [selectedBookingIds, setSelectedBookingIds] = useState([])
+  const [selectedJobIds, setSelectedJobIds] = useState([])
+  const [visibilityFilter, setVisibilityFilter] = useState('all')
   const [courtDraft, setCourtDraft] = useState(null)
   const [userDraft, setUserDraft] = useState(null)
   const [newCourtDraft, setNewCourtDraft] = useState(createEmptyCourtDraft())
@@ -172,6 +201,24 @@ export function AdminDashboard() {
     setSelectedUserIds((current) => current.filter((id) => data.users.some((user) => user.id === id)))
   }, [data])
 
+  useEffect(() => {
+    if (!data?.bookings?.length) {
+      setSelectedBookingIds([])
+      return
+    }
+
+    setSelectedBookingIds((current) => current.filter((id) => data.bookings.some((booking) => booking.id === id)))
+  }, [data])
+
+  useEffect(() => {
+    if (!data?.jobs?.length) {
+      setSelectedJobIds([])
+      return
+    }
+
+    setSelectedJobIds((current) => current.filter((id) => data.jobs.some((job) => job.id === id)))
+  }, [data])
+
   const summary = data?.summary || { users: 0, courts: 0, bookings: 0, jobs: 0 }
 
   function toggleCourtSelection(courtId) {
@@ -187,12 +234,32 @@ export function AdminDashboard() {
   }
 
   function setAllCourtsSelected(isSelected) {
-    setSelectedCourtIds(isSelected ? (data?.courts || []).map((court) => court.id) : [])
+    setSelectedCourtIds(isSelected ? visibleCourts.map((court) => court.id) : [])
   }
 
   function setAllUsersSelected(isSelected) {
-    setSelectedUserIds(isSelected ? (data?.users || []).map((user) => user.id) : [])
+    setSelectedUserIds(isSelected ? visibleUsers.map((user) => user.id) : [])
   }
+
+  function setAllBookingsSelected(isSelected) {
+    setSelectedBookingIds(isSelected ? (data?.bookings || []).map((booking) => booking.id) : [])
+  }
+
+  function setAllJobsSelected(isSelected) {
+    setSelectedJobIds(isSelected ? (data?.jobs || []).map((job) => job.id) : [])
+  }
+
+  const visibleCourts = (data?.courts || []).filter((court) => {
+    if (visibilityFilter === 'active') return court.isActive !== false
+    if (visibilityFilter === 'hidden') return court.isActive === false
+    return true
+  })
+
+  const visibleUsers = (data?.users || []).filter((user) => {
+    if (visibilityFilter === 'active') return user.isActive !== false
+    if (visibilityFilter === 'hidden') return user.isActive === false
+    return true
+  })
 
   async function saveCourt(event) {
     event.preventDefault()
@@ -410,6 +477,58 @@ export function AdminDashboard() {
     }
   }
 
+  async function bulkUpdateBookings(action) {
+    if (!selectedBookingIds.length) return
+
+    setError('')
+    setNotice('')
+
+    try {
+      const response = await fetch('/api/admin/bookings/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedBookingIds, action }),
+      })
+      const payload = await response.json()
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'تعذر تنفيذ الإجراء المجمع')
+      }
+
+      setSelectedBookingIds([])
+      setNotice(action === 'confirm' ? 'تم تأكيد الحجوزات المحددة' : 'تم إلغاء الحجوزات المحددة')
+      window.dispatchEvent(new Event('msm:data-changed'))
+    } catch (bulkError) {
+      setError(bulkError instanceof Error ? bulkError.message : 'تعذر تنفيذ الإجراء المجمع')
+    }
+  }
+
+  async function bulkUpdateJobs(action) {
+    if (!selectedJobIds.length) return
+
+    setError('')
+    setNotice('')
+
+    try {
+      const response = await fetch('/api/admin/maintenance/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedJobIds, action }),
+      })
+      const payload = await response.json()
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'تعذر تنفيذ الإجراء المجمع')
+      }
+
+      setSelectedJobIds([])
+      setNotice('تم تحديث طلبات الصيانة المحددة')
+      window.dispatchEvent(new Event('msm:data-changed'))
+    } catch (bulkError) {
+      setError(bulkError instanceof Error ? bulkError.message : 'تعذر تنفيذ الإجراء المجمع')
+    }
+  }
+
   return (
     <main className="dashboard">
       <div className="dashboard-head">
@@ -446,6 +565,21 @@ export function AdminDashboard() {
 
       {error ? <p className="empty-state">{error}</p> : null}
       {notice ? <p className="notice-state">{notice}</p> : null}
+
+      <section className="panel admin-toolbar">
+        <div>
+          <p className="eyebrow">Admin filters</p>
+          <h3>فلتر الرؤية داخل الإدارة</h3>
+        </div>
+        <label>
+          عرض الكيانات
+          <select value={visibilityFilter} onChange={(event) => setVisibilityFilter(event.target.value)}>
+            <option value="all">الكل</option>
+            <option value="active">Active فقط</option>
+            <option value="hidden">Hidden فقط</option>
+          </select>
+        </label>
+      </section>
 
       <section className="dashboard-grid" id="creators">
         <article className="table-panel">
@@ -821,11 +955,11 @@ export function AdminDashboard() {
                 <button className="secondary-btn" type="button" onClick={() => setAllUsersSelected(false)}>
                   إلغاء الكل
                 </button>
-                <span className="dashboard-chip">{selectedUserIds.length}/{data?.users?.length || 0}</span>
+                <span className="dashboard-chip">{selectedUserIds.length}/{visibleUsers.length}</span>
               </div>
             </div>
             <div className="table-list">
-              {(data?.users || []).map((user) => (
+              {visibleUsers.map((user) => (
                 <div key={user.id} className="table-row">
                   <div>
                     <strong>{user.name}</strong>
@@ -882,12 +1016,12 @@ export function AdminDashboard() {
                   <button className="secondary-btn" type="button" onClick={() => setAllCourtsSelected(false)}>
                     إلغاء الكل
                   </button>
-                  <span className="dashboard-chip">{selectedCourtIds.length}/{data?.courts?.length || 0}</span>
+                  <span className="dashboard-chip">{selectedCourtIds.length}/{visibleCourts.length}</span>
                 </div>
               </div>
               <p className="table-note">الملاعب المسجلة والمعروضة على المنصة.</p>
               <div className="table-list compact">
-                {(data?.courts || []).slice(0, 6).map((court) => (
+                {visibleCourts.slice(0, 6).map((court) => (
                   <div key={court.id} className="table-row">
                     <div>
                       <strong>{court.name}</strong>
@@ -920,17 +1054,56 @@ export function AdminDashboard() {
             <div className="dashboard-card" id="bookings">
               <div className="dashboard-head">
                 <h3>الحجوزات</h3>
-                <span className="dashboard-chip">{data?.bookings?.length || 0}</span>
+                <div className="button-row">
+                  <button
+                    className="secondary-btn"
+                    type="button"
+                    disabled={!selectedBookingIds.length}
+                    onClick={() => bulkUpdateBookings('confirm')}
+                  >
+                    تأكيد المحدد
+                  </button>
+                  <button
+                    className="secondary-btn"
+                    type="button"
+                    disabled={!selectedBookingIds.length}
+                    onClick={() => bulkUpdateBookings('cancel')}
+                  >
+                    إلغاء المحدد
+                  </button>
+                  <button className="secondary-btn" type="button" onClick={() => setAllBookingsSelected(true)}>
+                    تحديد الكل
+                  </button>
+                  <button className="secondary-btn" type="button" onClick={() => setAllBookingsSelected(false)}>
+                    إلغاء الكل
+                  </button>
+                  <span className="dashboard-chip">{selectedBookingIds.length}/{data?.bookings?.length || 0}</span>
+                </div>
               </div>
               <p className="table-note">مراجعة الحجوزات الحالية لحل التعارضات بسرعة.</p>
               <div className="table-list compact">
-                {(data?.bookings || []).slice(0, 4).map((booking) => (
+                {(data?.bookings || []).slice(0, 6).map((booking) => (
                   <div key={booking.id} className="table-row">
                     <div>
                       <strong>{booking.customerName}</strong>
                       <p className="table-note">{booking.court?.name || booking.courtId}</p>
                     </div>
-                    <span className="dashboard-chip">{booking.status}</span>
+                    <div className="row-actions">
+                      <label className="row-check">
+                        <input
+                          type="checkbox"
+                          checked={selectedBookingIds.includes(booking.id)}
+                          onChange={() =>
+                            setSelectedBookingIds((current) =>
+                              current.includes(booking.id)
+                                ? current.filter((id) => id !== booking.id)
+                                : [...current, booking.id]
+                            )
+                          }
+                        />
+                      </label>
+                      <span className={`status-pill ${bookingStatusClass(booking.status)}`}>{booking.status}</span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -938,17 +1111,64 @@ export function AdminDashboard() {
             <div className="dashboard-card" id="jobs">
               <div className="dashboard-head">
                 <h3>الصيانة</h3>
-                <span className="dashboard-chip">{data?.jobs?.length || 0}</span>
+                <div className="button-row">
+                  <button
+                    className="secondary-btn"
+                    type="button"
+                    disabled={!selectedJobIds.length}
+                    onClick={() => bulkUpdateJobs('accept')}
+                  >
+                    قبول المحدد
+                  </button>
+                  <button
+                    className="secondary-btn"
+                    type="button"
+                    disabled={!selectedJobIds.length}
+                    onClick={() => bulkUpdateJobs('complete')}
+                  >
+                    إكمال المحدد
+                  </button>
+                  <button
+                    className="secondary-btn"
+                    type="button"
+                    disabled={!selectedJobIds.length}
+                    onClick={() => bulkUpdateJobs('cancel')}
+                  >
+                    إلغاء المحدد
+                  </button>
+                  <button className="secondary-btn" type="button" onClick={() => setAllJobsSelected(true)}>
+                    تحديد الكل
+                  </button>
+                  <button className="secondary-btn" type="button" onClick={() => setAllJobsSelected(false)}>
+                    إلغاء الكل
+                  </button>
+                  <span className="dashboard-chip">{selectedJobIds.length}/{data?.jobs?.length || 0}</span>
+                </div>
               </div>
               <p className="table-note">طلبات الصيانة والنطاق التشغيلي للفنيين.</p>
               <div className="table-list compact">
-                {(data?.jobs || []).slice(0, 4).map((job) => (
+                {(data?.jobs || []).slice(0, 6).map((job) => (
                   <div key={job.id} className="table-row">
                     <div>
                       <strong>{job.title}</strong>
                       <p className="table-note">{job.category}</p>
                     </div>
-                    <span className="dashboard-chip">{job.status}</span>
+                    <div className="row-actions">
+                      <label className="row-check">
+                        <input
+                          type="checkbox"
+                          checked={selectedJobIds.includes(job.id)}
+                          onChange={() =>
+                            setSelectedJobIds((current) =>
+                              current.includes(job.id)
+                                ? current.filter((id) => id !== job.id)
+                                : [...current, job.id]
+                            )
+                          }
+                        />
+                      </label>
+                      <span className={`status-pill ${maintenanceStatusClass(job.status)}`}>{job.status}</span>
+                    </div>
                   </div>
                 ))}
               </div>

@@ -192,6 +192,26 @@ export function CourtsExplorer({ courts, initialFilters }) {
     }
   }
 
+  async function copyPresetLink(preset) {
+    if (typeof window === 'undefined') return
+
+    const url = new URL(window.location.href)
+    Object.entries(preset).forEach(([key, value]) => {
+      if (value === 'all' || value === '' || value == null) {
+        url.searchParams.delete(key)
+      } else {
+        url.searchParams.set(key, value)
+      }
+    })
+
+    try {
+      await navigator.clipboard.writeText(url.toString())
+      setLinkStatus('تم نسخ رابط preset')
+    } catch {
+      setLinkStatus('تعذر نسخ رابط preset')
+    }
+  }
+
   return (
     <>
       <section className="panel">
@@ -285,6 +305,31 @@ export function CourtsExplorer({ courts, initialFilters }) {
             نسخ الرابط
           </button>
           {linkStatus ? <span className="table-note">{linkStatus}</span> : null}
+        </div>
+
+        <div className="button-row courts-preset-row">
+          <span className="table-note">Preset filters:</span>
+          <button
+            className="secondary-btn"
+            type="button"
+            onClick={() => copyPresetLink({ area: 'smouha', availability: 'now', sortBy: 'availability', page: '1' })}
+          >
+            سموحة + المتاح الآن
+          </button>
+          <button
+            className="secondary-btn"
+            type="button"
+            onClick={() => copyPresetLink({ sport: 'football', availability: 'now', sortBy: 'availability', page: '1' })}
+          >
+            كرة قدم متاح الآن
+          </button>
+          <button
+            className="secondary-btn"
+            type="button"
+            onClick={() => copyPresetLink({ sport: 'padel', area: 'sidi-gaber', sortBy: 'name', page: '1' })}
+          >
+            بادل سيدي جابر
+          </button>
         </div>
 
         <div className="section-head" style={{ marginTop: '18px' }}>
