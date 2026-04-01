@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Multi Sport Market - منصة حجز ملاعب وخدمات صيانة للملاعب في الإسكندرية."
+    />
+    <title>Multi Sport Market</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Alexandria-first sports ecosystem</p>
+          <h1>Multi Sport Market</h1>
+        </div>
+        <nav class="topbar-actions">
+          <a href="#courts">احجز ملعب</a>
+          <a href="#vendors">للأصحاب</a>
+          <a href="#maintenance">الصيانة</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div class="hero-copy">
+            <p class="hero-tag">MVP v1</p>
+            <h2>منصة واحدة لحجز الملاعب وإدارة الطلبات والصيانة في الإسكندرية</h2>
+            <p class="hero-text">
+              بنبدأ بالحجز الذكي في سموحة والمناطق القريبة، وبعدها نوسّع
+              إلى أدوات إدارة الملاعب ثم سوق الصيانة للفنيين.
+            </p>
+
+            <div class="hero-metrics">
+              <article>
+                <strong>20+</strong>
+                <span>ملعب مستهدف في أول دفعة</span>
+              </article>
+              <article>
+                <strong>3</strong>
+                <span>واجهات أساسية في الطريق</span>
+              </article>
+              <article>
+                <strong>1</strong>
+                <span>مصدر الحقيقة للحجوزات</span>
+              </article>
+            </div>
+          </div>
+
+          <aside class="hero-card">
+            <h3>ابدأ بحثك</h3>
+            <div class="filters">
+              <label>
+                المنطقة
+                <select id="areaFilter">
+                  <option value="all">كل المناطق</option>
+                  <option value="smouha">سموحة</option>
+                  <option value="sidi-gaber">سيدي جابر</option>
+                  <option value="san-stefano">سان ستيفانو</option>
+                  <option value="abor">أبو قير</option>
+                </select>
+              </label>
+              <label>
+                الرياضة
+                <select id="sportFilter">
+                  <option value="all">كل الرياضات</option>
+                  <option value="football">كرة قدم</option>
+                  <option value="padel">بادل</option>
+                  <option value="billiards">بلياردو</option>
+                  <option value="playstation">بلايستيشن</option>
+                </select>
+              </label>
+              <label>
+                السعر
+                <select id="priceFilter">
+                  <option value="all">كل الأسعار</option>
+                  <option value="low">منخفض</option>
+                  <option value="mid">متوسط</option>
+                  <option value="high">مرتفع</option>
+                </select>
+              </label>
+            </div>
+            <button id="resetFilters" class="primary-btn">إعادة الضبط</button>
+          </aside>
+        </section>
+
+        <section class="section" id="courts">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">B2C booking</p>
+              <h3>ملاعب متاحة للحجز الآن</h3>
+            </div>
+            <p>بحث سريع مع منع الحجوزات المزدوجة وتجربة مناسبة للجوال.</p>
+          </div>
+
+          <div class="grid" id="courtsGrid"></div>
+        </section>
+
+        <section class="split-section">
+          <article class="panel" id="vendors">
+            <p class="eyebrow">Vendor portal</p>
+            <h3>لوحة تحكم لصاحب الملعب</h3>
+            <ul class="feature-list">
+              <li>عرض الحجوزات اليومية والوقت الفاضي</li>
+              <li>إدارة الأسعار والعروض في الأوقات الهادية</li>
+              <li>طلب صيانة من نفس المنصة</li>
+            </ul>
+          </article>
+
+          <article class="panel" id="maintenance">
+            <p class="eyebrow">B2B maintenance</p>
+            <h3>سوق صيانة يربط الملاعب بالفنيين</h3>
+            <ul class="feature-list">
+              <li>تصنيف الخدمات: أرضيات، إضاءة، تكييف، معدات</li>
+              <li>تقييم الفنيين بعد التنفيذ</li>
+              <li>عقود سنوية وضمانات واضحة</li>
+            </ul>
+          </article>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Roadmap</p>
+              <h3>خطة التنفيذ</h3>
+            </div>
+            <p>ترتيب يقلل المخاطرة: الحجز أولاً، ثم الإدارة، ثم الصيانة.</p>
+          </div>
+
+          <div class="timeline">
+            <div class="timeline-item">
+              <span>01</span>
+              <div>
+                <h4>سموحة MVP</h4>
+                <p>20 ملعب كرة وحجز يدوي/نص آلي مع تتبع داخلي.</p>
+              </div>
+            </div>
+            <div class="timeline-item">
+              <span>02</span>
+              <div>
+                <h4>بوابة الأصحاب</h4>
+                <p>إدارة مواعيد، إشعارات، وعروض على نفس الوقت الفاضي.</p>
+              </div>
+            </div>
+            <div class="timeline-item">
+              <span>03</span>
+              <div>
+                <h4>سوق الصيانة</h4>
+                <p>طلبات خدمة، تقييمات، وضمانات تشغيلية.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal-backdrop" id="bookingModal" hidden>
+      <div class="modal">
+        <button class="close-btn" id="closeModal" aria-label="إغلاق">×</button>
+        <p class="eyebrow">Booking request</p>
+        <h3 id="modalTitle">طلب حجز</h3>
+        <p id="modalMeta" class="modal-meta"></p>
+        <form class="booking-form">
+          <label>
+            الاسم
+            <input type="text" placeholder="اسمك" />
+          </label>
+          <label>
+            رقم الهاتف
+            <input type="tel" placeholder="01xxxxxxxxx" />
+          </label>
+          <label>
+            الموعد المطلوب
+            <input type="datetime-local" />
+          </label>
+          <button type="button" class="primary-btn">تأكيد الطلب</button>
+        </form>
+      </div>
+    </div>
+
+    <template id="courtCardTemplate">
+      <article class="court-card">
+        <div class="court-card__header">
+          <div>
+            <p class="court-area"></p>
+            <h4 class="court-name"></h4>
+          </div>
+          <span class="court-badge"></span>
+        </div>
+        <div class="court-meta">
+          <span class="court-sport"></span>
+          <span class="court-price"></span>
+        </div>
+        <p class="court-desc"></p>
+        <div class="court-actions">
+          <button class="secondary-btn court-book-btn" type="button">احجز الآن</button>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
