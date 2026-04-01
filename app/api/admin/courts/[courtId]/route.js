@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAdminUser } from '@/lib/admin'
+import { recordAuditLog } from '@/lib/audit'
 import { getPrisma } from '@/lib/prisma'
 import { memoryStore } from '@/lib/store'
 
@@ -38,12 +39,33 @@ export async function PUT(request, { params }) {
       }
 
       Object.assign(court, payload)
+      await recordAuditLog({
+        actorId: admin.id,
+        actorName: admin.name,
+        actorRole: admin.role,
+        action: 'UPDATE',
+        entityType: 'COURT',
+        entityId: court.id,
+        message: `تم تحديث ملعب ${court.name}`,
+        metadata: payload,
+      })
       return NextResponse.json({ court })
     }
 
     const court = await prisma.court.update({
       where: { id: courtId },
       data: payload,
+    })
+
+    await recordAuditLog({
+      actorId: admin.id,
+      actorName: admin.name,
+      actorRole: admin.role,
+      action: 'UPDATE',
+      entityType: 'COURT',
+      entityId: court.id,
+      message: `تم تحديث ملعب ${court.name}`,
+      metadata: payload,
     })
 
     return NextResponse.json({ court })
@@ -73,6 +95,16 @@ export async function DELETE(request, { params }) {
       }
 
       court.isActive = false
+      await recordAuditLog({
+        actorId: admin.id,
+        actorName: admin.name,
+        actorRole: admin.role,
+        action: 'DELETE',
+        entityType: 'COURT',
+        entityId: court.id,
+        message: `تم تعطيل ملعب ${court.name}`,
+        metadata: { isActive: false },
+      })
       return NextResponse.json({ court })
     }
 
@@ -87,6 +119,17 @@ export async function DELETE(request, { params }) {
     const updatedCourt = await prisma.court.update({
       where: { id: courtId },
       data: { isActive: false },
+    })
+
+    await recordAuditLog({
+      actorId: admin.id,
+      actorName: admin.name,
+      actorRole: admin.role,
+      action: 'DELETE',
+      entityType: 'COURT',
+      entityId: updatedCourt.id,
+      message: `تم تعطيل ملعب ${updatedCourt.name}`,
+      metadata: { isActive: false },
     })
 
     return NextResponse.json({ court: updatedCourt })

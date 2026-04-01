@@ -134,3 +134,20 @@ model WaitlistEntry {
   @@index([courtId, status, startsAt])
   @@index([seriesId])
 }
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorId     String?
+  actorName   String?
+  actorRole   UserRole?
+  action      String
+  entityType  String
+  entityId    String?
+  message     String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@index([action])
+}

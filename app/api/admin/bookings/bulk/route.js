@@ -5,6 +5,7 @@ import { getPrisma } from '@/lib/prisma'
 import { memoryStore } from '@/lib/store'
 import { findMatchingWaitlistEntries } from '@/lib/waitlist'
 import { notifyWaitlistEntries } from '@/lib/notifications'
+import { recordAuditLog } from '@/lib/audit'
 
 export const runtime = 'nodejs'
 
@@ -54,6 +55,7 @@ export async function POST(request) {
               entries: matches.map((entry) => ({ ...entry, court })),
               court,
               reason: 'available',
+              actor: admin,
             })
           } catch (notifyError) {
             console.warn('waitlist notification failed', notifyError)
@@ -80,6 +82,22 @@ export async function POST(request) {
       include: { court: true },
       orderBy: { startsAt: 'asc' },
     })
+
+    for (const booking of updatedBookings) {
+      await recordAuditLog({
+        actorId: admin.id,
+        actorName: admin.name,
+        actorRole: admin.role,
+        action: 'UPDATE',
+        entityType: 'BOOKING',
+        entityId: booking.id,
+        message:
+          status === 'CONFIRMED'
+            ? `تم تأكيد الحجز الخاص بـ ${booking.customerName}`
+            : `تم إلغاء الحجز الخاص بـ ${booking.customerName}`,
+        metadata: { courtId: booking.courtId, status },
+      })
+    }
 
     if (status === 'CANCELLED') {
       for (const booking of updatedBookings) {
@@ -110,6 +128,7 @@ export async function POST(request) {
             entries: matches,
             court: booking.court,
             reason: 'available',
+            actor: admin,
           })
         } catch (notifyError) {
           console.warn('waitlist notification failed', notifyError)

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAdminUser } from '@/lib/admin'
+import { recordAuditLog } from '@/lib/audit'
 import { getPrisma } from '@/lib/prisma'
 import { memoryStore } from '@/lib/store'
 
@@ -54,12 +55,33 @@ export async function PUT(request, { params }) {
 
     if (!prisma) {
       Object.assign(target, payload)
+      await recordAuditLog({
+        actorId: admin.id,
+        actorName: admin.name,
+        actorRole: admin.role,
+        action: 'UPDATE',
+        entityType: 'USER',
+        entityId: target.id,
+        message: `تم تحديث المستخدم ${target.name}`,
+        metadata: payload,
+      })
       return NextResponse.json({ user: target })
     }
 
     const user = await prisma.user.update({
       where: { id: userId },
       data: payload,
+    })
+
+    await recordAuditLog({
+      actorId: admin.id,
+      actorName: admin.name,
+      actorRole: admin.role,
+      action: 'UPDATE',
+      entityType: 'USER',
+      entityId: user.id,
+      message: `تم تحديث المستخدم ${user.name}`,
+      metadata: payload,
     })
 
     return NextResponse.json({ user })
@@ -100,6 +122,16 @@ export async function DELETE(request, { params }) {
       }
 
       user.isActive = false
+      await recordAuditLog({
+        actorId: admin.id,
+        actorName: admin.name,
+        actorRole: admin.role,
+        action: 'DELETE',
+        entityType: 'USER',
+        entityId: user.id,
+        message: `تم تعطيل المستخدم ${user.name}`,
+        metadata: { isActive: false },
+      })
       return NextResponse.json({ user })
     }
 
@@ -123,6 +155,17 @@ export async function DELETE(request, { params }) {
     const removed = await prisma.user.update({
       where: { id: userId },
       data: { isActive: false },
+    })
+
+    await recordAuditLog({
+      actorId: admin.id,
+      actorName: admin.name,
+      actorRole: admin.role,
+      action: 'DELETE',
+      entityType: 'USER',
+      entityId: removed.id,
+      message: `تم تعطيل المستخدم ${removed.name}`,
+      metadata: { isActive: false },
     })
 
     return NextResponse.json({ user: removed })

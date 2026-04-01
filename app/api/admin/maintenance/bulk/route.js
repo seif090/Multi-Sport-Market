@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAdminUser } from '@/lib/admin'
+import { recordAuditLog } from '@/lib/audit'
 import { getPrisma } from '@/lib/prisma'
 import { memoryStore } from '@/lib/store'
 
@@ -41,6 +42,25 @@ export async function POST(request) {
           updatedJobs.push(job)
         }
       })
+
+      for (const job of updatedJobs) {
+        await recordAuditLog({
+          actorId: admin.id,
+          actorName: admin.name,
+          actorRole: admin.role,
+          action: 'UPDATE',
+          entityType: 'MAINTENANCE',
+          entityId: job.id,
+          message:
+            status === 'ACCEPTED'
+              ? `تم قبول طلب الصيانة ${job.title}`
+              : status === 'COMPLETED'
+                ? `تم إكمال طلب الصيانة ${job.title}`
+                : `تم إلغاء طلب الصيانة ${job.title}`,
+          metadata: { status },
+        })
+      }
+
       return NextResponse.json({ jobs: updatedJobs, action, status })
     }
 
@@ -49,7 +69,29 @@ export async function POST(request) {
       data: { status },
     })
 
-    return NextResponse.json({ jobs, action, status })
+    const updatedJobs = await prisma.maintenanceJob.findMany({
+      where: { id: { in: ids } },
+    })
+
+    for (const job of updatedJobs) {
+      await recordAuditLog({
+        actorId: admin.id,
+        actorName: admin.name,
+        actorRole: admin.role,
+        action: 'UPDATE',
+        entityType: 'MAINTENANCE',
+        entityId: job.id,
+        message:
+          status === 'ACCEPTED'
+            ? `تم قبول طلب الصيانة ${job.title}`
+            : status === 'COMPLETED'
+              ? `تم إكمال طلب الصيانة ${job.title}`
+              : `تم إلغاء طلب الصيانة ${job.title}`,
+        metadata: { status },
+      })
+    }
+
+    return NextResponse.json({ jobs: updatedJobs, action, status })
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Invalid bulk maintenance payload', issues: error.flatten() }, { status: 400 })

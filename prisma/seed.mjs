@@ -1,5 +1,5 @@
 import { PrismaClient, BookingStatus, MaintenanceStatus, UserRole } from '@prisma/client'
-import { bookingsSeed, courtsSeed, maintenanceSeed, usersSeed, waitlistSeed } from '../lib/seed.js'
+import { auditSeed, bookingsSeed, courtsSeed, maintenanceSeed, usersSeed, waitlistSeed } from '../lib/seed.js'
 import { calculateAmountCents } from '../lib/scheduling.js'
 
 const prisma = new PrismaClient()
@@ -99,8 +99,24 @@ async function main() {
     })
   }
 
+  for (const log of auditSeed) {
+    await prisma.auditLog.create({
+      data: {
+        id: log.id,
+        actorId: log.actorId || null,
+        actorName: log.actorName || null,
+        actorRole: log.actorRole || null,
+        action: log.action,
+        entityType: log.entityType,
+        entityId: log.entityId || null,
+        message: log.message,
+        metadata: log.metadata || null,
+      },
+    })
+  }
+
   console.log(
-    `Seeded ${courtsSeed.length} courts, ${bookingsSeed.length} bookings, ${waitlistSeed.length} waitlist entries, and ${maintenanceSeed.length} maintenance jobs.`
+    `Seeded ${courtsSeed.length} courts, ${bookingsSeed.length} bookings, ${waitlistSeed.length} waitlist entries, ${maintenanceSeed.length} maintenance jobs, and ${auditSeed.length} audit logs.`
   )
 }
 

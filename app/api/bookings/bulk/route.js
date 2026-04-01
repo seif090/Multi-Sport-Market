@@ -5,6 +5,7 @@ import { getPrisma } from '@/lib/prisma'
 import { memoryStore } from '@/lib/store'
 import { findMatchingWaitlistEntries } from '@/lib/waitlist'
 import { notifyWaitlistEntries } from '@/lib/notifications'
+import { recordAuditLog } from '@/lib/audit'
 import { SESSION_COOKIE, getUserFromSessionToken } from '@/lib/auth'
 
 export const runtime = 'nodejs'
@@ -69,6 +70,7 @@ export async function POST(request) {
               entries: matches.map((entry) => ({ ...entry, court })),
               court,
               reason: 'available',
+              actor: user,
             })
           } catch (notifyError) {
             console.warn('waitlist notification failed', notifyError)
@@ -103,6 +105,22 @@ export async function POST(request) {
       orderBy: { startsAt: 'asc' },
     })
 
+    for (const booking of bookings) {
+      await recordAuditLog({
+        actorId: user.id,
+        actorName: user.name,
+        actorRole: user.role,
+        action: 'UPDATE',
+        entityType: 'BOOKING',
+        entityId: booking.id,
+        message:
+          status === 'CONFIRMED'
+            ? `تم تأكيد الحجز الخاص بـ ${booking.customerName}`
+            : `تم إلغاء الحجز الخاص بـ ${booking.customerName}`,
+        metadata: { courtId: booking.courtId, status },
+      })
+    }
+
     if (status === 'CANCELLED') {
       for (const booking of bookings) {
         const matches = await prisma.waitlistEntry.findMany({
@@ -132,6 +150,7 @@ export async function POST(request) {
             entries: matches,
             court: booking.court,
             reason: 'available',
+            actor: user,
           })
         } catch (notifyError) {
           console.warn('waitlist notification failed', notifyError)

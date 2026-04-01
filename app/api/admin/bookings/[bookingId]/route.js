@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAdminUser } from '@/lib/admin'
+import { recordAuditLog } from '@/lib/audit'
 import { getPrisma } from '@/lib/prisma'
 import { memoryStore } from '@/lib/store'
 import { calculateAmountCents, overlaps } from '@/lib/scheduling'
@@ -63,6 +64,21 @@ export async function PATCH(request, { params }) {
       booking.endsAt = body.endsAt
       booking.amountCents = calculateAmountCents(court, body.startsAt, body.endsAt)
 
+      await recordAuditLog({
+        actorId: admin.id,
+        actorName: admin.name,
+        actorRole: admin.role,
+        action: 'UPDATE',
+        entityType: 'BOOKING',
+        entityId: booking.id,
+        message: `تم إعادة جدولة الحجز الخاص بـ ${booking.customerName}`,
+        metadata: {
+          courtId: body.courtId,
+          startsAt: body.startsAt,
+          endsAt: body.endsAt,
+        },
+      })
+
       return NextResponse.json({ booking })
     }
 
@@ -92,6 +108,21 @@ export async function PATCH(request, { params }) {
         amountCents: calculateAmountCents(court, body.startsAt, body.endsAt),
       },
       include: { court: true },
+    })
+
+    await recordAuditLog({
+      actorId: admin.id,
+      actorName: admin.name,
+      actorRole: admin.role,
+      action: 'UPDATE',
+      entityType: 'BOOKING',
+      entityId: updatedBooking.id,
+      message: `تم إعادة جدولة الحجز الخاص بـ ${updatedBooking.customerName}`,
+      metadata: {
+        courtId: body.courtId,
+        startsAt: body.startsAt,
+        endsAt: body.endsAt,
+      },
     })
 
     return NextResponse.json({ booking: updatedBooking })

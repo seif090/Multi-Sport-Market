@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { downloadCsv } from '@/lib/csv'
 import { AdminCalendarBoard } from './admin-calendar-board'
+import { AdminAuditPanel } from './admin-audit-panel'
 
 const roleLabels = {
   PLAYER: 'Player',
@@ -106,7 +107,7 @@ function createEmptyUserDraft() {
   }
 }
 
-export function AdminDashboard() {
+export function AdminDashboard({ courts = [] }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [savingCourt, setSavingCourt] = useState(false)
@@ -721,6 +722,9 @@ export function AdminDashboard() {
           <button className="primary-btn" type="button" onClick={loadData}>
             تحديث البيانات
           </button>
+          <a className="secondary-btn" href="/dashboard/admin/waitlist">
+            قائمة الانتظار
+          </a>
         </div>
       </div>
 
@@ -859,6 +863,8 @@ export function AdminDashboard() {
           ))}
         </div>
       </section>
+
+      <AdminAuditPanel />
 
       {error ? <p className="empty-state">{error}</p> : null}
       {notice ? <p className="notice-state">{notice}</p> : null}

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAdminUser } from '@/lib/admin'
+import { recordAuditLog } from '@/lib/audit'
 import { getPrisma } from '@/lib/prisma'
 import { memoryStore } from '@/lib/store'
 
@@ -30,11 +31,32 @@ export async function POST(request) {
         ...payload,
       }
       memoryStore.users.unshift(user)
+      await recordAuditLog({
+        actorId: admin.id,
+        actorName: admin.name,
+        actorRole: admin.role,
+        action: 'CREATE',
+        entityType: 'USER',
+        entityId: user.id,
+        message: `تم إنشاء مستخدم ${user.name}`,
+        metadata: payload,
+      })
       return NextResponse.json({ user }, { status: 201 })
     }
 
     const user = await prisma.user.create({
       data: payload,
+    })
+
+    await recordAuditLog({
+      actorId: admin.id,
+      actorName: admin.name,
+      actorRole: admin.role,
+      action: 'CREATE',
+      entityType: 'USER',
+      entityId: user.id,
+      message: `تم إنشاء مستخدم ${user.name}`,
+      metadata: payload,
     })
 
     return NextResponse.json({ user }, { status: 201 })

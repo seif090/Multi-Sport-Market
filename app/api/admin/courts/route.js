@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAdminUser } from '@/lib/admin'
+import { recordAuditLog } from '@/lib/audit'
 import { getPrisma } from '@/lib/prisma'
 import { memoryStore } from '@/lib/store'
 
@@ -36,11 +37,32 @@ export async function POST(request) {
         ...payload,
       }
       memoryStore.courts.unshift(court)
+      await recordAuditLog({
+        actorId: admin.id,
+        actorName: admin.name,
+        actorRole: admin.role,
+        action: 'CREATE',
+        entityType: 'COURT',
+        entityId: court.id,
+        message: `تم إنشاء ملعب ${court.name}`,
+        metadata: payload,
+      })
       return NextResponse.json({ court }, { status: 201 })
     }
 
     const court = await prisma.court.create({
       data: payload,
+    })
+
+    await recordAuditLog({
+      actorId: admin.id,
+      actorName: admin.name,
+      actorRole: admin.role,
+      action: 'CREATE',
+      entityType: 'COURT',
+      entityId: court.id,
+      message: `تم إنشاء ملعب ${court.name}`,
+      metadata: payload,
     })
 
     return NextResponse.json({ court }, { status: 201 })
