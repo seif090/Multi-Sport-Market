@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 const roleRedirects = {
   VENDOR: '/dashboard/vendors',
   TECHNICIAN: '/dashboard/technicians',
-  ADMIN: '/dashboard/vendors',
+  ADMIN: '/dashboard/admin',
 }
 
 export function LoginForm() {
@@ -69,14 +69,14 @@ export function LoginForm() {
           placeholder="01xxxxxxxxx"
         />
       </label>
-        <label>
-          نوع الحساب
-          <select value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))}>
-            <option value="VENDOR">صاحب ملعب</option>
-            <option value="TECHNICIAN">فني</option>
-            <option value="ADMIN">مدير المنصة</option>
-          </select>
-        </label>
+      <label>
+        نوع الحساب
+        <select value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))}>
+          <option value="VENDOR">صاحب ملعب</option>
+          <option value="TECHNICIAN">فني</option>
+          <option value="ADMIN">مدير المنصة</option>
+        </select>
+      </label>
 
       {error ? <p className="form-error">{error}</p> : null}
 

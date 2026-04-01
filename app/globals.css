@@ -271,6 +271,20 @@
   color: var(--danger);
 }
 
+.courts-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) repeat(3, minmax(0, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.courts-toolbar label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
 .form-hint,
 .dashboard-copy,
 .table-note {
@@ -285,7 +299,8 @@
   .stats-grid,
   .form-grid.two-col,
   .login-layout,
-  .slot-grid {
+  .slot-grid,
+  .courts-toolbar {
     grid-template-columns: 1fr;
   }
 

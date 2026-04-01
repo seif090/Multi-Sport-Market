@@ -7,7 +7,12 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   if (pathname.startsWith('/login') && user) {
-    const destination = user.role === 'TECHNICIAN' ? '/dashboard/technicians' : '/dashboard/vendors'
+    const destination =
+      user.role === 'ADMIN'
+        ? '/dashboard/admin'
+        : user.role === 'TECHNICIAN'
+          ? '/dashboard/technicians'
+          : '/dashboard/vendors'
     return NextResponse.redirect(new URL(destination, request.url))
   }
 
@@ -23,6 +28,10 @@ export async function proxy(request: NextRequest) {
     }
 
     if (pathname.startsWith('/dashboard/technicians') && !['TECHNICIAN', 'ADMIN'].includes(user.role)) {
+      return NextResponse.redirect(new URL('/dashboard/vendors', request.url))
+    }
+
+    if (pathname.startsWith('/dashboard/admin') && user.role !== 'ADMIN') {
       return NextResponse.redirect(new URL('/dashboard/vendors', request.url))
     }
   }

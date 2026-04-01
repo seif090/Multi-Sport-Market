@@ -17,6 +17,7 @@ export async function SiteShell({ children }) {
           <Link href="/courts/court-1">تفاصيل ملعب</Link>
           <Link href="/dashboard/vendors">الأصحاب</Link>
           <Link href="/dashboard/technicians">الفنيون</Link>
+          {user?.role === 'ADMIN' ? <Link href="/dashboard/admin">الإدارة</Link> : null}
           <Link href="/login">{user ? 'الحساب' : 'تسجيل الدخول'}</Link>
         </nav>
       </header>

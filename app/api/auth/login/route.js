@@ -19,7 +19,11 @@ export async function POST(request) {
     const response = NextResponse.json({
       user,
       redirectTo:
-        user.role === 'TECHNICIAN' ? '/dashboard/technicians' : '/dashboard/vendors',
+        user.role === 'ADMIN'
+          ? '/dashboard/admin'
+          : user.role === 'TECHNICIAN'
+            ? '/dashboard/technicians'
+            : '/dashboard/vendors',
     })
 
     response.cookies.set(SESSION_COOKIE, token, {
