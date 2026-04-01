@@ -1,31 +1,42 @@
 # Multi Sport Market
 
-واجهة MVP أولية لمنصة حجز ملاعب وصيانة للملاعب في الإسكندرية.
+تطبيق Next.js App Router لمنصة حجز ملاعب وصيانة في الإسكندرية.
 
-## الفكرة
+## اللي اتبنى
 
-- `B2C`: البحث عن الملاعب والحجز
-- `B2B`: بوابة لأصحاب الملاعب
-- `B2B Service`: سوق صيانة للملاعب والفنيين
+- صفحة رئيسية RTL عربية
+- لوحة أصحاب الملاعب
+- لوحة الفنيين
+- Route Handlers للـ API
+- Prisma schema لقاعدة البيانات
+- fallback بيانات demo لو `DATABASE_URL` مش متظبط
 
-## التشغيل
+## التشغيل المحلي
 
-1. افتح `index.html` مباشرة في المتصفح.
-2. أو استخدم أي سيرفر محلي بسيط لو حبيت:
-   - `npx serve .`
-   - `python -m http.server`
+1. انسخ `.env.example` إلى `.env.local`
+2. اضبط `DATABASE_URL`
+3. شغل:
+   - `npm install`
+   - `npm run dev`
 
-## اللي موجود حالياً
+## البناء
 
-- صفحة رئيسية RTL بالعربية
-- فلاتر بحث للملاعب
-- بطاقات ملاعب ديناميكية
-- مودال حجز مبدئي
-- Sections لخطة الـ MVP والـ B2B
+- `npm run build`
 
-## الخطوة التالية
+## الـ API
 
-- ربط الواجهة بباك إند
-- إضافة تسجيل دخول
-- حفظ الحجوزات في قاعدة بيانات
-- لوحة تحكم للمالكين والفنيين
+- `GET /api/courts`
+- `GET /api/bookings`
+- `POST /api/bookings`
+- `GET /api/maintenance`
+- `POST /api/maintenance`
+- `GET /api/dashboard/summary`
+
+## قاعدة البيانات
+
+المخطط موجود في [prisma/schema.prisma](./prisma/schema.prisma).  
+للاستخدام الإنتاجي، وصّل المشروع بقاعدة PostgreSQL ثم نفّذ migrations الخاصة بـ Prisma.
+
+## ملاحظة
+
+الملفات القديمة `index.html` و`app.js` و`styles.css` موجودة كمرجع، لكن التطبيق الحالي يعمل من مجلد `app/`.

@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum MaintenanceStatus {
+  NEW
+  ACCEPTED
+  COMPLETED
+  CANCELLED
+}
+
+enum UserRole {
+  PLAYER
+  VENDOR
+  TECHNICIAN
+  ADMIN
+}
+
+model User {
+  id             String            @id @default(cuid())
+  name           String
+  phone          String?           @unique
+  email          String?           @unique
+  role           UserRole          @default(PLAYER)
+  vendorCourts   Court[]           @relation("VendorCourts")
+  vendorJobs     MaintenanceJob[]  @relation("VendorJobs")
+  technicianJobs MaintenanceJob[]  @relation("TechnicianJobs")
+  bookings       Booking[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+}
+
+model Court {
+  id          String    @id @default(cuid())
+  name        String
+  area        String
+  areaLabel   String
+  sport       String
+  sportLabel  String
+  price       String
+  priceLabel  String
+  badge       String
+  description String
+  isActive    Boolean   @default(true)
+  vendorId    String?
+  vendor      User?     @relation("VendorCourts", fields: [vendorId], references: [id])
+  bookings    Booking[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Booking {
+  id           String        @id @default(cuid())
+  courtId      String
+  userId       String?
+  customerName String
+  phone        String
+  startsAt     DateTime
+  endsAt       DateTime
+  status       BookingStatus @default(PENDING)
+  notes        String?
+  court        Court         @relation(fields: [courtId], references: [id])
+  user         User?         @relation(fields: [userId], references: [id])
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([courtId, startsAt, endsAt])
+}
+
+model MaintenanceJob {
+  id            String            @id @default(cuid())
+  title         String
+  category      String
+  vendorName    String
+  customerName  String
+  phone         String
+  status        MaintenanceStatus @default(NEW)
+  notes         String?
+  vendorId      String?
+  technicianId  String?
+  vendor        User?             @relation("VendorJobs", fields: [vendorId], references: [id])
+  technician    User?             @relation("TechnicianJobs", fields: [technicianId], references: [id])
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
