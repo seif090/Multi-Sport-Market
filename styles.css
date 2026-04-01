@@ -300,6 +300,15 @@ textarea:focus {
   margin-top: 18px;
 }
 
+.admin-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+}
+
 .admin-toolbar__filters {
   display: flex;
   flex-wrap: wrap;

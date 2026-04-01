@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { downloadCsv } from '@/lib/csv'
 
 const roleLabels = {
   PLAYER: 'Player',
@@ -48,25 +49,6 @@ function maintenanceStatusClass(status) {
     default:
       return 'status-new'
   }
-}
-
-function csvEscape(value) {
-  const text = value == null ? '' : String(value)
-  if (/[,"\n]/.test(text)) {
-    return `"${text.replace(/"/g, '""')}"`
-  }
-  return text
-}
-
-function downloadCsv(filename, rows) {
-  const csv = ['\uFEFF' + rows.map((row) => row.map(csvEscape).join(',')).join('\n')]
-  const blob = new Blob(csv, { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  link.click()
-  URL.revokeObjectURL(url)
 }
 
 function createCourtDraft(court) {
@@ -683,6 +665,31 @@ export function AdminDashboard() {
           </button>
           <button className="secondary-btn" type="button" onClick={exportBookingsCsv}>
             Export bookings CSV
+          </button>
+        </div>
+      </section>
+
+      <section className="panel admin-quick-actions">
+        <div>
+          <p className="eyebrow">Quick actions</p>
+          <h3>إجراءات سريعة للحجوزات والصيانة</h3>
+          <p className="form-hint">الأزرار دي بتنفذ على العناصر المحددة مباشرة من غير ما تضطر تنزل للبطاقات.</p>
+        </div>
+        <div className="button-row">
+          <button className="secondary-btn" type="button" disabled={!selectedBookingIds.length} onClick={() => bulkUpdateBookings('confirm')}>
+            تأكيد الحجوزات
+          </button>
+          <button className="secondary-btn" type="button" disabled={!selectedBookingIds.length} onClick={() => bulkUpdateBookings('cancel')}>
+            إلغاء الحجوزات
+          </button>
+          <button className="secondary-btn" type="button" disabled={!selectedJobIds.length} onClick={() => bulkUpdateJobs('accept')}>
+            قبول الصيانة
+          </button>
+          <button className="secondary-btn" type="button" disabled={!selectedJobIds.length} onClick={() => bulkUpdateJobs('complete')}>
+            إكمال الصيانة
+          </button>
+          <button className="secondary-btn" type="button" disabled={!selectedJobIds.length} onClick={() => bulkUpdateJobs('cancel')}>
+            إلغاء الصيانة
           </button>
         </div>
       </section>

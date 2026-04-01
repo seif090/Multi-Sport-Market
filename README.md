@@ -71,7 +71,30 @@
 5. نفّذ deploy:
    - `vercel deploy --prod`
 
-ملاحظة: المشروع متوافق مع النشر على Vercel بدون إعدادات خاصة إضافية، لأن Next.js App Router وRoute Handlers وPrisma كلهم جاهزين.
+### أوامر جاهزة
+
+```bash
+# ربط المشروع المحلي بمشروع Vercel الصحيح
+vercel link
+
+# سحب المتغيرات المحلية بعد إضافة/تحديث env vars
+vercel env pull .env.local --yes
+
+# تجهيز قاعدة البيانات
+npx prisma migrate deploy
+npm run db:seed
+
+# Deploy preview ثم production
+vercel deploy
+vercel deploy --prod
+```
+
+### المتغيرات المطلوبة
+
+- `DATABASE_URL`
+- `AUTH_SECRET`
+
+ملاحظة: المشروع متوافق مع النشر على Vercel بدون إعدادات خاصة إضافية، لأن Next.js App Router وRoute Handlers وPrisma كلهم جاهزين. ملف [vercel.json](./vercel.json) موجود فقط لتثبيت أن المشروع Next.js صريح.
 
 ## ملاحظة
 

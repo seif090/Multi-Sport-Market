@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { downloadCsv } from '@/lib/csv'
 
 function statusLabel(status) {
   switch (status) {
@@ -102,6 +103,21 @@ export function TechnicianDashboard() {
     setSelectedJobIds(isSelected ? visibleJobs.map((job) => job.id) : [])
   }
 
+  function exportJobsCsv() {
+    const rows = [
+      ['العنوان', 'الفئة', 'الملعب', 'العميل', 'الحالة', 'ملاحظات'],
+      ...visibleJobs.map((job) => [
+        job.title,
+        job.category,
+        job.vendorName,
+        job.customerName,
+        job.status,
+        job.notes || '',
+      ]),
+    ]
+    downloadCsv('technician-jobs.csv', rows)
+  }
+
   const jobStats = [
     { label: 'طلبات جديدة', value: String(visibleJobs.filter((job) => job.status === 'NEW').length) },
     { label: 'مكتملة اليوم', value: String(visibleJobs.filter((job) => job.status === 'COMPLETED').length) },
@@ -122,6 +138,9 @@ export function TechnicianDashboard() {
           </button>
           <button className="secondary-btn" type="button">
             ملف التقييم
+          </button>
+          <button className="secondary-btn" type="button" onClick={exportJobsCsv}>
+            Export jobs CSV
           </button>
         </div>
       </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { downloadCsv } from '@/lib/csv'
 
 function bookingStatusLabel(status) {
   switch (status) {
@@ -141,6 +142,37 @@ export function VendorDashboard() {
     setSelectedBookingIds(isSelected ? visibleBookings.map((booking) => booking.id) : [])
   }
 
+  function exportBookingsCsv() {
+    const rows = [
+      ['العميل', 'الهاتف', 'الملعب', 'الحالة', 'البداية', 'النهاية', 'ملاحظات'],
+      ...visibleBookings.map((booking) => [
+        booking.customerName,
+        booking.phone,
+        booking.court?.name || booking.courtId,
+        booking.status,
+        booking.startsAt,
+        booking.endsAt,
+        booking.notes || '',
+      ]),
+    ]
+    downloadCsv('vendor-bookings.csv', rows)
+  }
+
+  function exportMaintenanceCsv() {
+    const rows = [
+      ['العنوان', 'الفئة', 'الموقع', 'العميل', 'الحالة', 'ملاحظات'],
+      ...visibleMaintenanceJobs.map((job) => [
+        job.title,
+        job.category,
+        job.vendorName,
+        job.customerName,
+        job.status,
+        job.notes || '',
+      ]),
+    ]
+    downloadCsv('vendor-maintenance.csv', rows)
+  }
+
   const vendorStats = [
     { label: 'حجوزات اليوم', value: String(summary.bookings || visibleBookings.length) },
     { label: 'الملاعب', value: String(summary.courts) },
@@ -161,6 +193,12 @@ export function VendorDashboard() {
           </button>
           <button className="secondary-btn" type="button">
             طلب صيانة
+          </button>
+          <button className="secondary-btn" type="button" onClick={exportBookingsCsv}>
+            Export bookings CSV
+          </button>
+          <button className="secondary-btn" type="button" onClick={exportMaintenanceCsv}>
+            Export maintenance CSV
           </button>
         </div>
       </div>
