@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 const initialForm = {
   customerName: '',
+  email: '',
   phone: '',
   startsAt: '',
   durationMinutes: '90',
@@ -65,6 +66,7 @@ export function BookingModal({ isOpen, court, prefillStart, onClose, onCreated }
         body: JSON.stringify({
           courtId: court.id,
           customerName: form.customerName,
+          email: form.email || undefined,
           phone: form.phone,
           startsAt: starts.toISOString(),
           endsAt: ends.toISOString(),
@@ -122,6 +124,15 @@ export function BookingModal({ isOpen, court, prefillStart, onClose, onCreated }
               value={form.customerName}
               onChange={(event) => setForm((current) => ({ ...current, customerName: event.target.value }))}
               placeholder="اسمك"
+            />
+          </label>
+          <label>
+            البريد الإلكتروني اختياري
+            <input
+              type="email"
+              value={form.email}
+              onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+              placeholder="name@example.com"
             />
           </label>
           <label>

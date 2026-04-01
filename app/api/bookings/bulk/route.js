@@ -3,6 +3,8 @@ import { cookies } from 'next/headers'
 import { z } from 'zod'
 import { getPrisma } from '@/lib/prisma'
 import { memoryStore } from '@/lib/store'
+import { findMatchingWaitlistEntries } from '@/lib/waitlist'
+import { notifyWaitlistEntries } from '@/lib/notifications'
 import { SESSION_COOKIE, getUserFromSessionToken } from '@/lib/auth'
 
 export const runtime = 'nodejs'
@@ -40,6 +42,7 @@ export async function POST(request) {
 
     if (!prisma) {
       const updatedBookings = []
+      const cancelledBookings = []
       for (const booking of memoryStore.bookings) {
         if (!ids.includes(booking.id)) continue
 
@@ -48,6 +51,29 @@ export async function POST(request) {
 
         booking.status = status
         updatedBookings.push(booking)
+        if (status === 'CANCELLED') {
+          cancelledBookings.push(booking)
+        }
+      }
+
+      for (const booking of cancelledBookings) {
+        const court = memoryStore.courts.find((item) => item.id === booking.courtId) || null
+        const matches = findMatchingWaitlistEntries(memoryStore.waitlistEntries, booking)
+        matches.forEach((entry) => {
+          entry.status = 'NOTIFIED'
+          entry.notifiedAt = new Date().toISOString()
+        })
+        if (matches.length) {
+          try {
+            await notifyWaitlistEntries({
+              entries: matches.map((entry) => ({ ...entry, court })),
+              court,
+              reason: 'available',
+            })
+          } catch (notifyError) {
+            console.warn('waitlist notification failed', notifyError)
+          }
+        }
       }
 
       return NextResponse.json({ bookings: updatedBookings, action, status })
@@ -76,6 +102,42 @@ export async function POST(request) {
       include: { court: true },
       orderBy: { startsAt: 'asc' },
     })
+
+    if (status === 'CANCELLED') {
+      for (const booking of bookings) {
+        const matches = await prisma.waitlistEntry.findMany({
+          where: {
+            courtId: booking.courtId,
+            status: 'WAITING',
+            startsAt: { lt: booking.endsAt },
+            endsAt: { gt: booking.startsAt },
+          },
+          include: { court: true },
+          orderBy: { createdAt: 'asc' },
+          take: 3,
+        })
+
+        if (!matches.length) continue
+
+        await prisma.waitlistEntry.updateMany({
+          where: { id: { in: matches.map((entry) => entry.id) } },
+          data: {
+            status: 'NOTIFIED',
+            notifiedAt: new Date(),
+          },
+        })
+
+        try {
+          await notifyWaitlistEntries({
+            entries: matches,
+            court: booking.court,
+            reason: 'available',
+          })
+        } catch (notifyError) {
+          console.warn('waitlist notification failed', notifyError)
+        }
+      }
+    }
 
     return NextResponse.json({ bookings, action, status })
   } catch (error) {

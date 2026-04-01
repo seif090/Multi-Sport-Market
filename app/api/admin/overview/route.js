@@ -41,7 +41,7 @@ export async function GET() {
   const [users, courts, bookings, jobs, summary] = await Promise.all([
     prisma.user.findMany({ orderBy: { createdAt: 'desc' }, take: 20 }),
     prisma.court.findMany({ orderBy: { createdAt: 'desc' }, take: 20 }),
-    prisma.booking.findMany({ include: { court: true }, orderBy: { createdAt: 'desc' }, take: 20 }),
+    prisma.booking.findMany({ include: { court: true }, orderBy: { createdAt: 'desc' }, take: 100 }),
     prisma.maintenanceJob.findMany({ orderBy: { createdAt: 'desc' }, take: 20 }),
     Promise.all([
       prisma.user.count(),

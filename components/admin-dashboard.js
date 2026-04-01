@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { downloadCsv } from '@/lib/csv'
+import { AdminCalendarBoard } from './admin-calendar-board'
 
 const roleLabels = {
   PLAYER: 'Player',
@@ -113,6 +114,16 @@ export function AdminDashboard() {
   const [creatingCourt, setCreatingCourt] = useState(false)
   const [creatingUser, setCreatingUser] = useState(false)
   const [analytics, setAnalytics] = useState(null)
+  const [analyticsFromDate, setAnalyticsFromDate] = useState(() => {
+    const date = new Date()
+    date.setDate(date.getDate() - 6)
+    return date.toISOString().slice(0, 10)
+  })
+  const [analyticsToDate, setAnalyticsToDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [analyticsCourtId, setAnalyticsCourtId] = useState('all')
+  const [analyticsSport, setAnalyticsSport] = useState('all')
+  const [analyticsStatus, setAnalyticsStatus] = useState('all')
+  const [analyticsWaitlistStatus, setAnalyticsWaitlistStatus] = useState('all')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [selectedCourtId, setSelectedCourtId] = useState('')
@@ -131,10 +142,19 @@ export function AdminDashboard() {
 
   async function loadData() {
     try {
+      setLoading(true)
       setError('')
+      const query = new URLSearchParams()
+      if (analyticsFromDate) query.set('from', analyticsFromDate)
+      if (analyticsToDate) query.set('to', analyticsToDate)
+      if (analyticsCourtId !== 'all') query.set('courtId', analyticsCourtId)
+      if (analyticsSport !== 'all') query.set('sport', analyticsSport)
+      if (analyticsStatus !== 'all') query.set('status', analyticsStatus)
+      if (analyticsWaitlistStatus !== 'all') query.set('waitlistStatus', analyticsWaitlistStatus)
+
       const [overviewResponse, analyticsResponse] = await Promise.all([
         fetch('/api/admin/overview', { cache: 'no-store' }),
-        fetch('/api/admin/analytics', { cache: 'no-store' }),
+        fetch(`/api/admin/analytics${query.toString() ? `?${query.toString()}` : ''}`, { cache: 'no-store' }),
       ])
 
       const [overviewPayload, analyticsPayload] = await Promise.all([
@@ -163,7 +183,7 @@ export function AdminDashboard() {
     const handler = () => loadData()
     window.addEventListener('msm:data-changed', handler)
     return () => window.removeEventListener('msm:data-changed', handler)
-  }, [])
+  }, [analyticsFromDate, analyticsToDate, analyticsCourtId, analyticsSport, analyticsStatus, analyticsWaitlistStatus])
 
   useEffect(() => {
     if (!selectedCourtId && data?.courts?.length) {
@@ -303,6 +323,10 @@ export function AdminDashboard() {
       }),
     [data, jobStatusFilter]
   )
+
+  const analyticsSports = useMemo(() => {
+    return [...new Set((data?.courts || []).map((court) => court.sport).filter(Boolean))]
+  }, [data?.courts])
 
   async function saveCourt(event) {
     event.preventDefault()
@@ -625,6 +649,66 @@ export function AdminDashboard() {
     downloadCsv('jobs-export.csv', rows)
   }
 
+  function exportAnalyticsCsv() {
+    const rows = [
+      ['المؤشر', 'القيمة'],
+      ['الإيراد التقديري', analytics?.revenue || '—'],
+      ['الإيراد المؤكد', analytics?.confirmedRevenue || '—'],
+      ['نسبة الإشغال', `${analytics?.utilizationPercent ?? 0}%`],
+      ['تحويل الحجوزات', `${analytics?.bookingConversionPercent ?? 0}%`],
+      ['تحويل الانتظار', `${analytics?.waitlistConversionPercent ?? 0}%`],
+      ['الملاعب النشطة', String(analytics?.activeCourts ?? 0)],
+      ['إجمالي الحجوزات', String(analytics?.totalBookings ?? 0)],
+      ['الحجوزات المؤكدة', String(analytics?.confirmedBookings ?? 0)],
+      ['قائمة الانتظار', String(analytics?.waitlistCount ?? 0)],
+      ['الحجوزات المتكررة', String(analytics?.recurringCount ?? 0)],
+    ]
+    if (analytics?.dailyRevenue?.length) {
+      rows.push(['', ''])
+      rows.push(['اليوم', 'الإيراد'])
+      analytics.dailyRevenue.forEach((day) => {
+        rows.push([day.label, day.formatted])
+      })
+    }
+    downloadCsv('analytics-summary.csv', rows)
+  }
+
+  function exportAnalyticsBookingsCsv() {
+    const rows = [
+      ['العميل', 'الهاتف', 'الملعب', 'الحالة', 'البداية', 'النهاية', 'السلسلة', 'التكرار', 'ملاحظات'],
+      ...((analytics?.bookings || []).map((booking) => [
+        booking.customerName,
+        booking.phone,
+        booking.court?.name || booking.courtId,
+        booking.status,
+        booking.startsAt,
+        booking.endsAt,
+        booking.seriesId || '',
+        booking.repeatPattern || 'NONE',
+        booking.notes || '',
+      ])),
+    ]
+    downloadCsv('analytics-bookings.csv', rows)
+  }
+
+  function exportAnalyticsWaitlistCsv() {
+    const rows = [
+      ['العميل', 'الهاتف', 'الملعب', 'الحالة', 'البداية', 'النهاية', 'الإخطار', 'السلسلة', 'ملاحظات'],
+      ...((analytics?.waitlistEntries || []).map((entry) => [
+        entry.customerName,
+        entry.phone,
+        entry.court?.name || entry.courtId,
+        entry.status,
+        entry.startsAt,
+        entry.endsAt,
+        entry.notifiedAt || '',
+        entry.seriesId || '',
+        entry.notes || '',
+      ])),
+    ]
+    downloadCsv('analytics-waitlist.csv', rows)
+  }
+
   return (
     <main className="dashboard">
       <div className="dashboard-head">
@@ -659,13 +743,80 @@ export function AdminDashboard() {
         </article>
       </section>
 
+      <AdminCalendarBoard courts={data?.courts || []} bookings={data?.bookings || []} onRescheduled={loadData} />
+
       <section className="panel analytics-panel">
         <div className="table-head">
           <div>
             <p className="eyebrow">Advanced analytics</p>
             <h3>التحليلات المتقدمة</h3>
           </div>
-          <span className="dashboard-chip">30d window</span>
+          <span className="dashboard-chip">{analytics?.filters?.from ? 'Custom window' : '30d window'}</span>
+        </div>
+        <div className="admin-toolbar__filters analytics-filters">
+          <label>
+            من تاريخ
+            <input type="date" value={analyticsFromDate} onChange={(event) => setAnalyticsFromDate(event.target.value)} />
+          </label>
+          <label>
+            إلى تاريخ
+            <input type="date" value={analyticsToDate} onChange={(event) => setAnalyticsToDate(event.target.value)} />
+          </label>
+          <label>
+            الملعب
+            <select value={analyticsCourtId} onChange={(event) => setAnalyticsCourtId(event.target.value)}>
+              <option value="all">الكل</option>
+              {(data?.courts || []).map((court) => (
+                <option key={court.id} value={court.id}>
+                  {court.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            الرياضة
+            <select value={analyticsSport} onChange={(event) => setAnalyticsSport(event.target.value)}>
+              <option value="all">الكل</option>
+              {analyticsSports.map((sport) => (
+                <option key={sport} value={sport}>
+                  {sport}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            حالة الحجز
+            <select value={analyticsStatus} onChange={(event) => setAnalyticsStatus(event.target.value)}>
+              <option value="all">الكل</option>
+              <option value="CONFIRMED">مؤكد</option>
+              <option value="PENDING">معلق</option>
+              <option value="CANCELLED">ملغي</option>
+            </select>
+          </label>
+          <label>
+            حالة الانتظار
+            <select value={analyticsWaitlistStatus} onChange={(event) => setAnalyticsWaitlistStatus(event.target.value)}>
+              <option value="all">الكل</option>
+              <option value="WAITING">منتظر</option>
+              <option value="NOTIFIED">تم الإخطار</option>
+              <option value="CONVERTED">تحول</option>
+              <option value="EXPIRED">منتهي</option>
+            </select>
+          </label>
+        </div>
+        <div className="button-row analytics-actions">
+          <button className="secondary-btn" type="button" onClick={() => loadData()}>
+            تحديث التحليلات
+          </button>
+          <button className="secondary-btn" type="button" onClick={exportAnalyticsCsv}>
+            Export analytics CSV
+          </button>
+          <button className="secondary-btn" type="button" onClick={exportAnalyticsBookingsCsv}>
+            Export analytics bookings CSV
+          </button>
+          <button className="secondary-btn" type="button" onClick={exportAnalyticsWaitlistCsv}>
+            Export analytics waitlist CSV
+          </button>
         </div>
         <div className="stats-grid analytics-grid">
           <article className="stats-card">

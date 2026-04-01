@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getPrisma } from '@/lib/prisma'
 import { memoryStore } from '@/lib/store'
+import { notifyWaitlistEntries } from '@/lib/notifications'
 import { calculateAmountCents, expandRecurrence, overlaps } from '@/lib/scheduling'
 
 export const runtime = 'nodejs'
@@ -9,6 +10,7 @@ export const runtime = 'nodejs'
 const bookingSchema = z.object({
   courtId: z.string().min(1),
   customerName: z.string().min(2),
+  email: z.string().email().optional().or(z.literal('')),
   phone: z.string().min(8),
   startsAt: z.string().datetime(),
   endsAt: z.string().datetime(),
@@ -28,6 +30,7 @@ function buildBookingRecord(court, body, occurrence, occurrenceIndex) {
   return {
     courtId: body.courtId,
     customerName: body.customerName,
+    email: body.email?.trim() || null,
     phone: body.phone,
     startsAt: occurrence.startsAt,
     endsAt: occurrence.endsAt,
@@ -44,6 +47,7 @@ function buildWaitlistRecord(body, occurrence, occurrenceIndex) {
   return {
     courtId: body.courtId,
     customerName: body.customerName,
+    email: body.email?.trim() || null,
     phone: body.phone,
     startsAt: occurrence.startsAt,
     endsAt: occurrence.endsAt,
@@ -156,6 +160,18 @@ export async function POST(request) {
         createdBookings.push(booking)
       })
 
+      if (waitlistEntries.length) {
+        try {
+          await notifyWaitlistEntries({
+            entries: waitlistEntries.map((entry) => ({ ...entry, court })),
+            court,
+            reason: 'added',
+          })
+        } catch (notifyError) {
+          console.warn('waitlist notification failed', notifyError)
+        }
+      }
+
       return NextResponse.json(
         {
           bookings: createdBookings,
@@ -171,13 +187,14 @@ export async function POST(request) {
 
     for (const occurrence of occurrences) {
       const occurrenceIndex = occurrence.occurrenceIndex
-      if (isConflict(existingBookings, occurrence)) {
-        if (body.joinWaitlist) {
-          waitlistEntries.push({
-            courtId: body.courtId,
-            customerName: body.customerName,
-            phone: body.phone,
-            startsAt: occurrence.startsAt,
+        if (isConflict(existingBookings, occurrence)) {
+          if (body.joinWaitlist) {
+            waitlistEntries.push({
+              courtId: body.courtId,
+              customerName: body.customerName,
+              email: body.email?.trim() || null,
+              phone: body.phone,
+              startsAt: occurrence.startsAt,
             endsAt: occurrence.endsAt,
             notes: body.notes,
             seriesId: occurrence.seriesId,
@@ -235,6 +252,18 @@ export async function POST(request) {
         orderBy: { startsAt: 'asc' },
       }),
     ])
+
+    if (createdWaitlistEntries.length) {
+      try {
+        await notifyWaitlistEntries({
+          entries: createdWaitlistEntries,
+          court,
+          reason: 'added',
+        })
+      } catch (notifyError) {
+        console.warn('waitlist notification failed', notifyError)
+      }
+    }
 
     return NextResponse.json(
       {

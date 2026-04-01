@@ -73,6 +73,7 @@ model Booking {
   courtId      String
   userId       String?
   customerName String
+  email        String?
   phone        String
   startsAt     DateTime
   endsAt       DateTime
@@ -114,6 +115,7 @@ model WaitlistEntry {
   courtId          String
   userId           String?
   customerName     String
+  email            String?
   phone            String
   startsAt         DateTime
   endsAt           DateTime
