@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { CourtCard } from './court-card'
 import { BookingModal } from './booking-modal'
 
-export function FilterBoard({ courts }) {
+export function FilterBoard({ courts, onBookingCreated }) {
   const [area, setArea] = useState('all')
   const [sport, setSport] = useState('all')
   const [price, setPrice] = useState('all')
@@ -97,9 +97,9 @@ export function FilterBoard({ courts }) {
 
       <BookingModal
         isOpen={Boolean(activeCourt)}
-        title={activeCourt ? `طلب حجز - ${activeCourt.name}` : 'طلب حجز'}
-        meta={activeCourt ? `${activeCourt.areaLabel} · ${activeCourt.sportLabel} · ${activeCourt.priceLabel}` : ''}
+        court={activeCourt}
         onClose={() => setActiveCourt(null)}
+        onCreated={onBookingCreated}
       />
     </>
   )

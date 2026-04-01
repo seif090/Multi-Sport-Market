@@ -139,6 +139,26 @@
   color: var(--muted);
 }
 
+.form-error,
+.form-success {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 16px;
+  font-size: 0.95rem;
+}
+
+.form-error {
+  background: rgba(255, 109, 109, 0.12);
+  border: 1px solid rgba(255, 109, 109, 0.3);
+  color: #ffb5b5;
+}
+
+.form-success {
+  background: rgba(49, 208, 170, 0.12);
+  border: 1px solid rgba(49, 208, 170, 0.25);
+  color: #aaf4e0;
+}
+
 .form-hint,
 .dashboard-copy,
 .table-note {

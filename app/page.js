@@ -29,7 +29,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <FilterBoard courts={courtsSeed.map((court, index) => ({ ...court, id: `demo-${index}` }))} />
+          <FilterBoard courts={courtsSeed} />
         </section>
 
         <section className="section">

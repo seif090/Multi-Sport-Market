@@ -19,6 +19,15 @@
    - `npm install`
    - `npm run dev`
 
+## الترحيل والـ Seed
+
+- إنشاء/تطبيق migration:
+  - `npx prisma migrate dev`
+- Seed للبيانات الأولية:
+  - `npm run db:seed`
+
+لو عندك قاعدة PostgreSQL جاهزة، استخدم `DATABASE_URL` الحقيقية قبل تنفيذ الخطوات دي.
+
 ## البناء
 
 - `npm run build`
@@ -35,7 +44,7 @@
 ## قاعدة البيانات
 
 المخطط موجود في [prisma/schema.prisma](./prisma/schema.prisma).  
-للاستخدام الإنتاجي، وصّل المشروع بقاعدة PostgreSQL ثم نفّذ migrations الخاصة بـ Prisma.
+الـ migration الأول موجود في [prisma/migrations/20260401000000_init/migration.sql](./prisma/migrations/20260401000000_init/migration.sql).
 
 ## ملاحظة
 

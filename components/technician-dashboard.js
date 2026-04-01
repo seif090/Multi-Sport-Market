@@ -1,0 +1,165 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+
+function statusLabel(status) {
+  switch (status) {
+    case 'COMPLETED':
+      return { label: 'مكتمل', className: 'status-completed' }
+    case 'ACCEPTED':
+      return { label: 'مقبول', className: 'status-accepted' }
+    case 'CANCELLED':
+      return { label: 'ملغي', className: 'status-cancelled' }
+    default:
+      return { label: 'جديد', className: 'status-new' }
+  }
+}
+
+export function TechnicianDashboard() {
+  const [summary, setSummary] = useState({ courts: 0, bookings: 0, jobs: 0 })
+  const [maintenanceJobs, setMaintenanceJobs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  async function loadData() {
+    try {
+      setError('')
+      const [summaryResponse, maintenanceResponse] = await Promise.all([
+        fetch('/api/dashboard/summary', { cache: 'no-store' }),
+        fetch('/api/maintenance', { cache: 'no-store' }),
+      ])
+
+      const [summaryData, maintenanceData] = await Promise.all([summaryResponse.json(), maintenanceResponse.json()])
+
+      setSummary(summaryData)
+      setMaintenanceJobs(maintenanceData.jobs ?? [])
+    } catch {
+      setError('تعذر تحميل بيانات الفنيين الآن')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+    const handler = () => loadData()
+    window.addEventListener('msm:data-changed', handler)
+    return () => window.removeEventListener('msm:data-changed', handler)
+  }, [])
+
+  const jobStats = [
+    { label: 'طلبات جديدة', value: String(maintenanceJobs.filter((job) => job.status === 'NEW').length) },
+    { label: 'مكتملة اليوم', value: String(maintenanceJobs.filter((job) => job.status === 'COMPLETED').length) },
+    { label: 'تقييم متوسط', value: '4.8/5' },
+  ]
+
+  return (
+    <main className="dashboard">
+      <div className="dashboard-head">
+        <div>
+          <p className="eyebrow">Technician portal</p>
+          <h2>لوحة تحكم الفنيين</h2>
+          <p className="dashboard-copy">استلام الطلبات، تحديث الحالة، وإظهار تاريخ التنفيذ.</p>
+        </div>
+        <div className="button-row">
+          <button className="primary-btn" type="button" onClick={loadData}>
+            تحديث التوفر
+          </button>
+          <button className="secondary-btn" type="button">
+            ملف التقييم
+          </button>
+        </div>
+      </div>
+
+      <section className="stats-grid">
+        {jobStats.map((stat) => (
+          <article key={stat.label} className="stats-card">
+            <strong>{loading ? '...' : stat.value}</strong>
+            <span>{stat.label}</span>
+          </article>
+        ))}
+      </section>
+
+      {error ? <p className="empty-state">{error}</p> : null}
+
+      <section className="dashboard-layout">
+        <aside className="sidebar">
+          <div className="sidebar-panel">
+            <p className="eyebrow">Focus</p>
+            <h3>شغل اليوم</h3>
+            <div className="sidebar-nav">
+              <a className="sidebar-link active" href="#jobs">
+                قائمة الطلبات
+              </a>
+              <a className="sidebar-link" href="#ratings">
+                التقييمات
+              </a>
+              <a className="sidebar-link" href="#contracts">
+                العقود
+              </a>
+            </div>
+          </div>
+          <div className="sidebar-panel">
+            <div className="sidebar-step">2</div>
+            <p className="form-hint">الهدف إن الفني يشوف الطلب، يقبله، ويثبت الوقت من غير مكالمات متكررة.</p>
+          </div>
+        </aside>
+
+        <div className="dashboard-main">
+          <article className="table-panel" id="jobs">
+            <div className="table-head">
+              <div>
+                <p className="eyebrow">Jobs</p>
+                <h3>طلبات الصيانة</h3>
+              </div>
+              <span className="dashboard-chip">Warranty enabled</span>
+            </div>
+
+            <div className="table-list">
+              {maintenanceJobs.length === 0 ? (
+                <div className="empty-state">مفيش طلبات صيانة حالياً.</div>
+              ) : (
+                maintenanceJobs.slice(0, 8).map((job) => {
+                  const status = statusLabel(job.status)
+                  return (
+                    <div key={job.id} className="table-row">
+                      <div>
+                        <strong>{job.title}</strong>
+                        <p className="table-note">{job.vendorName}</p>
+                      </div>
+                      <span className={`status-pill ${status.className}`}>{status.label}</span>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </article>
+
+          <article className="dashboard-grid" id="ratings">
+            <div className="dashboard-card">
+              <div className="dashboard-head">
+                <h3>التقييمات</h3>
+                <span className="dashboard-chip">4.8</span>
+              </div>
+              <p className="table-note">نظام تقييم بعد كل مهمة لضمان الجودة.</p>
+            </div>
+            <div className="dashboard-card" id="contracts">
+              <div className="dashboard-head">
+                <h3>العقود</h3>
+                <span className="dashboard-chip">Annual</span>
+              </div>
+              <p className="table-note">عقود سنوية للملاعب النشطة وخدمة متابعة دورية.</p>
+            </div>
+            <div className="dashboard-card">
+              <div className="dashboard-head">
+                <h3>الضمان</h3>
+                <span className="dashboard-chip">30 days</span>
+              </div>
+              <p className="table-note">كل إصلاح مرتبط بضمان واضح حتى انتهاء الفترة المتفق عليها.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+  )
+}
