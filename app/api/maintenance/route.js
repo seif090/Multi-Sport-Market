@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import { z } from 'zod'
 import { getPrisma } from '@/lib/prisma'
 import { memoryStore } from '@/lib/store'
+import { SESSION_COOKIE, getUserFromSessionToken } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 
@@ -35,16 +37,29 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    const cookieStore = await cookies()
+    const token = cookieStore.get(SESSION_COOKIE)?.value
+    const user = token ? await getUserFromSessionToken(token) : null
+
+    if (!user || !['VENDOR', 'ADMIN'].includes(user.role)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = maintenanceSchema.parse(await request.json())
     const prisma = getPrisma()
 
     if (!prisma) {
-      const job = { id: `job-${Date.now()}`, status: 'NEW', ...body }
+      const job = { id: `job-${Date.now()}`, status: 'NEW', vendorId: user.id, technicianId: null, ...body }
       memoryStore.maintenanceJobs.unshift(job)
       return NextResponse.json({ job }, { status: 201 })
     }
 
-    const job = await prisma.maintenanceJob.create({ data: body })
+    const job = await prisma.maintenanceJob.create({
+      data: {
+        ...body,
+        vendorId: user.id,
+      },
+    })
 
     return NextResponse.json({ job }, { status: 201 })
   } catch (error) {

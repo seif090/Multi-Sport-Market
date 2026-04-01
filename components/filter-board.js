@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { CourtCard } from './court-card'
 import { BookingModal } from './booking-modal'
 
@@ -80,15 +81,20 @@ export function FilterBoard({ courts, onBookingCreated }) {
               key={court.id}
               court={court}
               action={
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  onClick={() => {
-                    setActiveCourt(court)
-                  }}
-                >
-                  احجز الآن
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    onClick={() => {
+                      setActiveCourt(court)
+                    }}
+                  >
+                    احجز الآن
+                  </button>
+                  <Link className="ghost-btn" href={`/courts/${court.id}`}>
+                    التفاصيل
+                  </Link>
+                </>
               }
             />
           ))

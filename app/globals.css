@@ -67,6 +67,26 @@
   gap: 16px;
 }
 
+.session-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--card-border);
+  background: rgba(9, 20, 36, 0.7);
+}
+
+.session-chip {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(49, 208, 170, 0.12);
+  color: var(--accent);
+  font-weight: 700;
+}
+
 .dashboard-chip {
   align-self: start;
   padding: 6px 10px;
@@ -159,6 +179,98 @@
   color: #aaf4e0;
 }
 
+.login-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  gap: 18px;
+}
+
+.login-hero {
+  padding: 28px;
+  border-radius: 28px;
+  background:
+    linear-gradient(145deg, rgba(18, 33, 58, 0.9), rgba(7, 15, 28, 0.72)),
+    radial-gradient(circle at top left, rgba(49, 208, 170, 0.16), transparent 35%);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow);
+}
+
+.auth-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.court-availability-layout {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.detail-hero {
+  padding: 28px;
+}
+
+.detail-panel {
+  padding: 28px;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+  margin: 8px 0 14px;
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.slot-card {
+  padding: 14px;
+  border-radius: 18px;
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.slot-card.free {
+  border-color: rgba(49, 208, 170, 0.25);
+}
+
+.slot-card.taken {
+  border-color: rgba(255, 109, 109, 0.2);
+}
+
+.availability-pill {
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.availability-pill.available {
+  background: rgba(49, 208, 170, 0.12);
+  color: var(--accent);
+}
+
+.availability-pill.busy {
+  background: rgba(255, 109, 109, 0.14);
+  color: var(--danger);
+}
+
 .form-hint,
 .dashboard-copy,
 .table-note {
@@ -171,12 +283,16 @@
   .dashboard-layout,
   .dashboard-grid,
   .stats-grid,
-  .form-grid.two-col {
+  .form-grid.two-col,
+  .login-layout,
+  .slot-grid {
     grid-template-columns: 1fr;
   }
 
   .dashboard-head,
-  .table-head {
+  .table-head,
+  .detail-header,
+  .session-bar {
     align-items: start;
     flex-direction: column;
   }
