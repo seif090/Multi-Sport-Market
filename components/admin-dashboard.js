@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 const roleLabels = {
   PLAYER: 'Player',
@@ -48,6 +48,25 @@ function maintenanceStatusClass(status) {
     default:
       return 'status-new'
   }
+}
+
+function csvEscape(value) {
+  const text = value == null ? '' : String(value)
+  if (/[,"\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`
+  }
+  return text
+}
+
+function downloadCsv(filename, rows) {
+  const csv = ['\uFEFF' + rows.map((row) => row.map(csvEscape).join(',')).join('\n')]
+  const blob = new Blob(csv, { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 function createCourtDraft(court) {
@@ -120,6 +139,8 @@ export function AdminDashboard() {
   const [selectedBookingIds, setSelectedBookingIds] = useState([])
   const [selectedJobIds, setSelectedJobIds] = useState([])
   const [visibilityFilter, setVisibilityFilter] = useState('all')
+  const [bookingStatusFilter, setBookingStatusFilter] = useState('all')
+  const [jobStatusFilter, setJobStatusFilter] = useState('all')
   const [courtDraft, setCourtDraft] = useState(null)
   const [userDraft, setUserDraft] = useState(null)
   const [newCourtDraft, setNewCourtDraft] = useState(createEmptyCourtDraft())
@@ -219,6 +240,14 @@ export function AdminDashboard() {
     setSelectedJobIds((current) => current.filter((id) => data.jobs.some((job) => job.id === id)))
   }, [data])
 
+  useEffect(() => {
+    setSelectedBookingIds((current) => current.filter((id) => visibleBookings.some((booking) => booking.id === id)))
+  }, [visibleBookings])
+
+  useEffect(() => {
+    setSelectedJobIds((current) => current.filter((id) => visibleJobs.some((job) => job.id === id)))
+  }, [visibleJobs])
+
   const summary = data?.summary || { users: 0, courts: 0, bookings: 0, jobs: 0 }
 
   function toggleCourtSelection(courtId) {
@@ -242,11 +271,11 @@ export function AdminDashboard() {
   }
 
   function setAllBookingsSelected(isSelected) {
-    setSelectedBookingIds(isSelected ? (data?.bookings || []).map((booking) => booking.id) : [])
+    setSelectedBookingIds(isSelected ? visibleBookings.map((booking) => booking.id) : [])
   }
 
   function setAllJobsSelected(isSelected) {
-    setSelectedJobIds(isSelected ? (data?.jobs || []).map((job) => job.id) : [])
+    setSelectedJobIds(isSelected ? visibleJobs.map((job) => job.id) : [])
   }
 
   const visibleCourts = (data?.courts || []).filter((court) => {
@@ -260,6 +289,24 @@ export function AdminDashboard() {
     if (visibilityFilter === 'hidden') return user.isActive === false
     return true
   })
+
+  const visibleBookings = useMemo(
+    () =>
+      (data?.bookings || []).filter((booking) => {
+        if (bookingStatusFilter === 'all') return true
+        return booking.status === bookingStatusFilter.toUpperCase()
+      }),
+    [data, bookingStatusFilter]
+  )
+
+  const visibleJobs = useMemo(
+    () =>
+      (data?.jobs || []).filter((job) => {
+        if (jobStatusFilter === 'all') return true
+        return job.status === jobStatusFilter.toUpperCase()
+      }),
+    [data, jobStatusFilter]
+  )
 
   async function saveCourt(event) {
     event.preventDefault()
@@ -529,6 +576,36 @@ export function AdminDashboard() {
     }
   }
 
+  function exportCourtsCsv() {
+    const rows = [
+      ['الاسم', 'المنطقة', 'الرياضة', 'السعر', 'الحالة'],
+      ...visibleCourts.map((court) => [
+        court.name,
+        court.areaLabel,
+        court.sportLabel,
+        court.priceLabel,
+        court.isActive === false ? 'Hidden' : 'Active',
+      ]),
+    ]
+    downloadCsv('courts-export.csv', rows)
+  }
+
+  function exportBookingsCsv() {
+    const rows = [
+      ['العميل', 'الهاتف', 'الملعب', 'الحالة', 'البداية', 'النهاية', 'ملاحظات'],
+      ...visibleBookings.map((booking) => [
+        booking.customerName,
+        booking.phone,
+        booking.court?.name || booking.courtId,
+        booking.status,
+        booking.startsAt,
+        booking.endsAt,
+        booking.notes || '',
+      ]),
+    ]
+    downloadCsv('bookings-export.csv', rows)
+  }
+
   return (
     <main className="dashboard">
       <div className="dashboard-head">
@@ -571,14 +648,43 @@ export function AdminDashboard() {
           <p className="eyebrow">Admin filters</p>
           <h3>فلتر الرؤية داخل الإدارة</h3>
         </div>
-        <label>
-          عرض الكيانات
-          <select value={visibilityFilter} onChange={(event) => setVisibilityFilter(event.target.value)}>
-            <option value="all">الكل</option>
-            <option value="active">Active فقط</option>
-            <option value="hidden">Hidden فقط</option>
-          </select>
-        </label>
+        <div className="admin-toolbar__filters">
+          <label>
+            عرض الكيانات
+            <select value={visibilityFilter} onChange={(event) => setVisibilityFilter(event.target.value)}>
+              <option value="all">الكل</option>
+              <option value="active">Active فقط</option>
+              <option value="hidden">Hidden فقط</option>
+            </select>
+          </label>
+          <label>
+            الحجوزات
+            <select value={bookingStatusFilter} onChange={(event) => setBookingStatusFilter(event.target.value)}>
+              <option value="all">الكل</option>
+              <option value="pending">معلق</option>
+              <option value="confirmed">مؤكد</option>
+              <option value="cancelled">ملغي</option>
+            </select>
+          </label>
+          <label>
+            الصيانة
+            <select value={jobStatusFilter} onChange={(event) => setJobStatusFilter(event.target.value)}>
+              <option value="all">الكل</option>
+              <option value="new">جديد</option>
+              <option value="accepted">مقبول</option>
+              <option value="completed">مكتمل</option>
+              <option value="cancelled">ملغي</option>
+            </select>
+          </label>
+        </div>
+        <div className="button-row">
+          <button className="secondary-btn" type="button" onClick={exportCourtsCsv}>
+            Export courts CSV
+          </button>
+          <button className="secondary-btn" type="button" onClick={exportBookingsCsv}>
+            Export bookings CSV
+          </button>
+        </div>
       </section>
 
       <section className="dashboard-grid" id="creators">
@@ -1074,15 +1180,15 @@ export function AdminDashboard() {
                   <button className="secondary-btn" type="button" onClick={() => setAllBookingsSelected(true)}>
                     تحديد الكل
                   </button>
-                  <button className="secondary-btn" type="button" onClick={() => setAllBookingsSelected(false)}>
-                    إلغاء الكل
-                  </button>
-                  <span className="dashboard-chip">{selectedBookingIds.length}/{data?.bookings?.length || 0}</span>
+                <button className="secondary-btn" type="button" onClick={() => setAllBookingsSelected(false)}>
+                  إلغاء الكل
+                </button>
+                  <span className="dashboard-chip">{selectedBookingIds.length}/{visibleBookings.length}</span>
                 </div>
               </div>
               <p className="table-note">مراجعة الحجوزات الحالية لحل التعارضات بسرعة.</p>
               <div className="table-list compact">
-                {(data?.bookings || []).slice(0, 6).map((booking) => (
+                {visibleBookings.slice(0, 6).map((booking) => (
                   <div key={booking.id} className="table-row">
                     <div>
                       <strong>{booking.customerName}</strong>
@@ -1139,15 +1245,15 @@ export function AdminDashboard() {
                   <button className="secondary-btn" type="button" onClick={() => setAllJobsSelected(true)}>
                     تحديد الكل
                   </button>
-                  <button className="secondary-btn" type="button" onClick={() => setAllJobsSelected(false)}>
-                    إلغاء الكل
-                  </button>
-                  <span className="dashboard-chip">{selectedJobIds.length}/{data?.jobs?.length || 0}</span>
+                <button className="secondary-btn" type="button" onClick={() => setAllJobsSelected(false)}>
+                  إلغاء الكل
+                </button>
+                  <span className="dashboard-chip">{selectedJobIds.length}/{visibleJobs.length}</span>
                 </div>
               </div>
               <p className="table-note">طلبات الصيانة والنطاق التشغيلي للفنيين.</p>
               <div className="table-list compact">
-                {(data?.jobs || []).slice(0, 6).map((job) => (
+                {visibleJobs.slice(0, 6).map((job) => (
                   <div key={job.id} className="table-row">
                     <div>
                       <strong>{job.title}</strong>

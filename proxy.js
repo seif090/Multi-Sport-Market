@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getUserFromSessionToken, SESSION_COOKIE } from '@/lib/auth'
 
-export async function proxy(request: NextRequest) {
+export async function proxy(request) {
   const token = request.cookies.get(SESSION_COOKIE)?.value
   const user = token ? await getUserFromSessionToken(token) : null
   const { pathname } = request.nextUrl

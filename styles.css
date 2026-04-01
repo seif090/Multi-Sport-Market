@@ -293,10 +293,17 @@ textarea:focus {
 
 .admin-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: end;
   justify-content: space-between;
   gap: 16px;
   margin-top: 18px;
+}
+
+.admin-toolbar__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
 }
 
 .admin-toolbar label {
@@ -304,6 +311,14 @@ textarea:focus {
   gap: 8px;
   min-width: 220px;
   color: var(--muted);
+}
+
+.dashboard-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 16px 0 12px;
 }
 
 .section {

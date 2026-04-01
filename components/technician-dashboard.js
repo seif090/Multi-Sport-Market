@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 function statusLabel(status) {
   switch (status) {
@@ -18,21 +18,30 @@ function statusLabel(status) {
 export function TechnicianDashboard() {
   const [summary, setSummary] = useState({ courts: 0, bookings: 0, jobs: 0 })
   const [maintenanceJobs, setMaintenanceJobs] = useState([])
+  const [currentUser, setCurrentUser] = useState(null)
+  const [selectedJobIds, setSelectedJobIds] = useState([])
+  const [jobFilter, setJobFilter] = useState('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   async function loadData() {
     try {
       setError('')
-      const [summaryResponse, maintenanceResponse] = await Promise.all([
+      const [summaryResponse, maintenanceResponse, meResponse] = await Promise.all([
         fetch('/api/dashboard/summary', { cache: 'no-store' }),
         fetch('/api/maintenance', { cache: 'no-store' }),
+        fetch('/api/auth/me', { cache: 'no-store' }),
       ])
 
-      const [summaryData, maintenanceData] = await Promise.all([summaryResponse.json(), maintenanceResponse.json()])
+      const [summaryData, maintenanceData, meData] = await Promise.all([
+        summaryResponse.json(),
+        maintenanceResponse.json(),
+        meResponse.json(),
+      ])
 
       setSummary(summaryData)
       setMaintenanceJobs(maintenanceData.jobs ?? [])
+      setCurrentUser(meData.user ?? null)
     } catch {
       setError('تعذر تحميل بيانات الفنيين الآن')
     } finally {
@@ -47,9 +56,55 @@ export function TechnicianDashboard() {
     return () => window.removeEventListener('msm:data-changed', handler)
   }, [])
 
+  const visibleJobs = useMemo(() => {
+    const ownerJobs = maintenanceJobs.filter((job) => {
+      if (!currentUser || currentUser.role === 'ADMIN') return true
+      return job.technicianId === currentUser.id
+    })
+
+    if (jobFilter === 'all') return ownerJobs
+    return ownerJobs.filter((job) => job.status === jobFilter.toUpperCase())
+  }, [maintenanceJobs, currentUser, jobFilter])
+
+  useEffect(() => {
+    setSelectedJobIds((current) => current.filter((id) => visibleJobs.some((job) => job.id === id)))
+  }, [visibleJobs])
+
+  async function bulkUpdateJobs(action) {
+    if (!selectedJobIds.length) return
+
+    setError('')
+
+    try {
+      const response = await fetch('/api/maintenance/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedJobIds, action }),
+      })
+      const payload = await response.json()
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'تعذر تنفيذ الإجراء المجمع')
+      }
+
+      setSelectedJobIds([])
+      window.dispatchEvent(new Event('msm:data-changed'))
+    } catch (bulkError) {
+      setError(bulkError instanceof Error ? bulkError.message : 'تعذر تنفيذ الإجراء المجمع')
+    }
+  }
+
+  function toggleJobSelection(jobId) {
+    setSelectedJobIds((current) => (current.includes(jobId) ? current.filter((id) => id !== jobId) : [...current, jobId]))
+  }
+
+  function setAllJobsSelected(isSelected) {
+    setSelectedJobIds(isSelected ? visibleJobs.map((job) => job.id) : [])
+  }
+
   const jobStats = [
-    { label: 'طلبات جديدة', value: String(maintenanceJobs.filter((job) => job.status === 'NEW').length) },
-    { label: 'مكتملة اليوم', value: String(maintenanceJobs.filter((job) => job.status === 'COMPLETED').length) },
+    { label: 'طلبات جديدة', value: String(visibleJobs.filter((job) => job.status === 'NEW').length) },
+    { label: 'مكتملة اليوم', value: String(visibleJobs.filter((job) => job.status === 'COMPLETED').length) },
     { label: 'تقييم متوسط', value: '4.8/5' },
   ]
 
@@ -115,11 +170,66 @@ export function TechnicianDashboard() {
               <span className="dashboard-chip">Warranty enabled</span>
             </div>
 
+            <div className="dashboard-toolbar">
+              <div className="button-row">
+                <button className="secondary-btn" type="button" onClick={() => setJobFilter('all')}>
+                  الكل
+                </button>
+                <button className="secondary-btn" type="button" onClick={() => setJobFilter('new')}>
+                  جديد
+                </button>
+                <button className="secondary-btn" type="button" onClick={() => setJobFilter('accepted')}>
+                  مقبول
+                </button>
+                <button className="secondary-btn" type="button" onClick={() => setJobFilter('completed')}>
+                  مكتمل
+                </button>
+                <button className="secondary-btn" type="button" onClick={() => setJobFilter('cancelled')}>
+                  ملغي
+                </button>
+              </div>
+              <div className="button-row">
+                <button
+                  className="secondary-btn"
+                  type="button"
+                  disabled={!selectedJobIds.length}
+                  onClick={() => bulkUpdateJobs('accept')}
+                >
+                  قبول المحدد
+                </button>
+                <button
+                  className="secondary-btn"
+                  type="button"
+                  disabled={!selectedJobIds.length}
+                  onClick={() => bulkUpdateJobs('complete')}
+                >
+                  إكمال المحدد
+                </button>
+                <button
+                  className="secondary-btn"
+                  type="button"
+                  disabled={!selectedJobIds.length}
+                  onClick={() => bulkUpdateJobs('cancel')}
+                >
+                  إلغاء المحدد
+                </button>
+                <button className="secondary-btn" type="button" onClick={() => setAllJobsSelected(true)}>
+                  تحديد الكل
+                </button>
+                <button className="secondary-btn" type="button" onClick={() => setAllJobsSelected(false)}>
+                  إلغاء الكل
+                </button>
+                <span className="dashboard-chip">
+                  {selectedJobIds.length}/{visibleJobs.length}
+                </span>
+              </div>
+            </div>
+
             <div className="table-list">
-              {maintenanceJobs.length === 0 ? (
+              {visibleJobs.length === 0 ? (
                 <div className="empty-state">مفيش طلبات صيانة حالياً.</div>
               ) : (
-                maintenanceJobs.slice(0, 8).map((job) => {
+                visibleJobs.slice(0, 8).map((job) => {
                   const status = statusLabel(job.status)
                   return (
                     <div key={job.id} className="table-row">
@@ -127,7 +237,16 @@ export function TechnicianDashboard() {
                         <strong>{job.title}</strong>
                         <p className="table-note">{job.vendorName}</p>
                       </div>
-                      <span className={`status-pill ${status.className}`}>{status.label}</span>
+                      <div className="row-actions">
+                        <label className="row-check">
+                          <input
+                            type="checkbox"
+                            checked={selectedJobIds.includes(job.id)}
+                            onChange={() => toggleJobSelection(job.id)}
+                          />
+                        </label>
+                        <span className={`status-pill ${status.className}`}>{status.label}</span>
+                      </div>
                     </div>
                   )
                 })
