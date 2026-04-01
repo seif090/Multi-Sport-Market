@@ -904,6 +904,68 @@ textarea:focus {
   background: rgba(255, 255, 255, 0.04);
 }
 
+.admin-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
+  gap: 18px;
+  align-items: start;
+  margin-top: 18px;
+}
+
+.table-row--button {
+  width: 100%;
+  border: 0;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.table-row--button.is-selected {
+  background: rgba(49, 208, 170, 0.09);
+  border-color: rgba(49, 208, 170, 0.4);
+}
+
+.table-row--button:hover {
+  transform: none;
+  border-color: rgba(91, 188, 255, 0.42);
+}
+
+.audit-detail-panel {
+  position: sticky;
+  top: 18px;
+}
+
+.audit-detail {
+  display: grid;
+  gap: 14px;
+}
+
+.diff-list {
+  display: grid;
+  gap: 10px;
+}
+
+.diff-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.7fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.diff-row strong {
+  color: var(--accent-2);
+}
+
+.json-block {
+  margin: 0;
+  padding: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--muted);
+}
+
 .courts-toolbar {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -1026,6 +1088,14 @@ textarea:focus {
   .field-grid--two,
   .courts-toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .admin-detail-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-detail-panel {
+    position: static;
   }
 
   .hero-metrics {

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAdminUser } from '@/lib/admin'
-import { recordAuditLog } from '@/lib/audit'
+import { buildAuditSnapshot, recordAuditLog } from '@/lib/audit'
 import { getPrisma } from '@/lib/prisma'
 import { memoryStore } from '@/lib/store'
 
@@ -45,7 +45,9 @@ export async function POST(request) {
         entityType: 'COURT',
         entityId: court.id,
         message: `تم إنشاء ملعب ${court.name}`,
-        metadata: payload,
+        metadata: {
+          after: buildAuditSnapshot('COURT', court),
+        },
       })
       return NextResponse.json({ court }, { status: 201 })
     }
@@ -62,7 +64,9 @@ export async function POST(request) {
       entityType: 'COURT',
       entityId: court.id,
       message: `تم إنشاء ملعب ${court.name}`,
-      metadata: payload,
+      metadata: {
+        after: buildAuditSnapshot('COURT', court),
+      },
     })
 
     return NextResponse.json({ court }, { status: 201 })

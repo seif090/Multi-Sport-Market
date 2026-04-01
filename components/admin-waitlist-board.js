@@ -22,6 +22,8 @@ export function AdminWaitlistBoard({ courts = [] }) {
   const [error, setError] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [courtFilter, setCourtFilter] = useState('all')
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
   const [selectedIds, setSelectedIds] = useState([])
 
   async function loadWaitlist() {
@@ -30,6 +32,8 @@ export function AdminWaitlistBoard({ courts = [] }) {
       const query = new URLSearchParams()
       if (statusFilter !== 'all') query.set('status', statusFilter)
       if (courtFilter !== 'all') query.set('courtId', courtFilter)
+      if (fromDate) query.set('from', fromDate)
+      if (toDate) query.set('to', toDate)
 
       const response = await fetch(`/api/admin/waitlist${query.toString() ? `?${query.toString()}` : ''}`, {
         cache: 'no-store',
@@ -49,7 +53,7 @@ export function AdminWaitlistBoard({ courts = [] }) {
 
   useEffect(() => {
     loadWaitlist()
-  }, [statusFilter, courtFilter])
+  }, [statusFilter, courtFilter, fromDate, toDate])
 
   useEffect(() => {
     setSelectedIds((current) => current.filter((id) => waitlistEntries.some((entry) => entry.id === id)))
@@ -137,8 +141,16 @@ export function AdminWaitlistBoard({ courts = [] }) {
               <option key={court.id} value={court.id}>
                 {court.name}
               </option>
-            ))}
+          ))}
           </select>
+        </label>
+        <label>
+          From
+          <input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} />
+        </label>
+        <label>
+          To
+          <input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} />
         </label>
       </div>
 
@@ -178,6 +190,7 @@ export function AdminWaitlistBoard({ courts = [] }) {
                   <p className="table-note">
                     {entry.court?.name || entry.courtId} · {new Date(entry.startsAt).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}
                   </p>
+                  <p className="table-note">Created: {new Date(entry.createdAt).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}</p>
                 </div>
                 <div className="row-actions">
                   <label className="row-check">

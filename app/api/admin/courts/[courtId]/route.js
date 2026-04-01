@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAdminUser } from '@/lib/admin'
-import { recordAuditLog } from '@/lib/audit'
+import { buildAuditSnapshot, recordAuditLog } from '@/lib/audit'
 import { getPrisma } from '@/lib/prisma'
 import { memoryStore } from '@/lib/store'
 
@@ -38,6 +38,7 @@ export async function PUT(request, { params }) {
         return NextResponse.json({ error: 'Court not found' }, { status: 404 })
       }
 
+      const before = buildAuditSnapshot('COURT', court)
       Object.assign(court, payload)
       await recordAuditLog({
         actorId: admin.id,
@@ -47,9 +48,17 @@ export async function PUT(request, { params }) {
         entityType: 'COURT',
         entityId: court.id,
         message: `تم تحديث ملعب ${court.name}`,
-        metadata: payload,
+        metadata: {
+          before,
+          after: buildAuditSnapshot('COURT', court),
+        },
       })
       return NextResponse.json({ court })
+    }
+
+    const existingCourt = await prisma.court.findUnique({ where: { id: courtId } })
+    if (!existingCourt) {
+      return NextResponse.json({ error: 'Court not found' }, { status: 404 })
     }
 
     const court = await prisma.court.update({
@@ -65,7 +74,10 @@ export async function PUT(request, { params }) {
       entityType: 'COURT',
       entityId: court.id,
       message: `تم تحديث ملعب ${court.name}`,
-      metadata: payload,
+      metadata: {
+        before: buildAuditSnapshot('COURT', existingCourt),
+        after: buildAuditSnapshot('COURT', court),
+      },
     })
 
     return NextResponse.json({ court })
@@ -94,6 +106,7 @@ export async function DELETE(request, { params }) {
         return NextResponse.json({ error: 'Court not found' }, { status: 404 })
       }
 
+      const before = buildAuditSnapshot('COURT', court)
       court.isActive = false
       await recordAuditLog({
         actorId: admin.id,
@@ -103,7 +116,10 @@ export async function DELETE(request, { params }) {
         entityType: 'COURT',
         entityId: court.id,
         message: `تم تعطيل ملعب ${court.name}`,
-        metadata: { isActive: false },
+        metadata: {
+          before,
+          after: buildAuditSnapshot('COURT', court),
+        },
       })
       return NextResponse.json({ court })
     }
@@ -129,7 +145,10 @@ export async function DELETE(request, { params }) {
       entityType: 'COURT',
       entityId: updatedCourt.id,
       message: `تم تعطيل ملعب ${updatedCourt.name}`,
-      metadata: { isActive: false },
+      metadata: {
+        before: buildAuditSnapshot('COURT', existingCourt),
+        after: buildAuditSnapshot('COURT', updatedCourt),
+      },
     })
 
     return NextResponse.json({ court: updatedCourt })

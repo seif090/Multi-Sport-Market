@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAdminUser } from '@/lib/admin'
-import { recordAuditLog } from '@/lib/audit'
+import { buildAuditSnapshot, recordAuditLog } from '@/lib/audit'
 import { getPrisma } from '@/lib/prisma'
 import { memoryStore } from '@/lib/store'
 
@@ -36,11 +36,14 @@ export async function POST(request) {
 
     if (!prisma) {
       const updatedJobs = []
+      const auditBeforeById = new Map()
+
       memoryStore.maintenanceJobs.forEach((job) => {
-        if (ids.includes(job.id)) {
-          job.status = status
-          updatedJobs.push(job)
-        }
+        if (!ids.includes(job.id)) return
+
+        auditBeforeById.set(job.id, buildAuditSnapshot('MAINTENANCE', job))
+        job.status = status
+        updatedJobs.push(job)
       })
 
       for (const job of updatedJobs) {
@@ -57,14 +60,22 @@ export async function POST(request) {
               : status === 'COMPLETED'
                 ? `تم إكمال طلب الصيانة ${job.title}`
                 : `تم إلغاء طلب الصيانة ${job.title}`,
-          metadata: { status },
+          metadata: {
+            before: auditBeforeById.get(job.id) || null,
+            after: buildAuditSnapshot('MAINTENANCE', job),
+          },
         })
       }
 
       return NextResponse.json({ jobs: updatedJobs, action, status })
     }
 
-    const jobs = await prisma.maintenanceJob.updateMany({
+    const jobsToUpdate = await prisma.maintenanceJob.findMany({
+      where: { id: { in: ids } },
+    })
+    const auditBeforeById = new Map(jobsToUpdate.map((job) => [job.id, buildAuditSnapshot('MAINTENANCE', job)]))
+
+    await prisma.maintenanceJob.updateMany({
       where: { id: { in: ids } },
       data: { status },
     })
@@ -87,7 +98,10 @@ export async function POST(request) {
             : status === 'COMPLETED'
               ? `تم إكمال طلب الصيانة ${job.title}`
               : `تم إلغاء طلب الصيانة ${job.title}`,
-        metadata: { status },
+        metadata: {
+          before: auditBeforeById.get(job.id) || null,
+          after: buildAuditSnapshot('MAINTENANCE', job),
+        },
       })
     }
 

@@ -14,8 +14,10 @@ export async function GET(request) {
   const limit = Math.max(10, Math.min(Number(url.searchParams.get('limit') || 50), 200))
   const entityType = url.searchParams.get('entityType') || ''
   const action = url.searchParams.get('action') || ''
+  const from = url.searchParams.get('from') || ''
+  const to = url.searchParams.get('to') || ''
 
-  const logs = await fetchAuditLogs({ limit, entityType, action })
+  const logs = await fetchAuditLogs({ limit, entityType, action, from, to })
 
   return NextResponse.json({ logs })
 }

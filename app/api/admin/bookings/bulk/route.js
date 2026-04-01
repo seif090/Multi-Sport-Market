@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAdminUser } from '@/lib/admin'
+import { buildAuditSnapshot, recordAuditLog } from '@/lib/audit'
 import { getPrisma } from '@/lib/prisma'
 import { memoryStore } from '@/lib/store'
+import { calculateAmountCents } from '@/lib/scheduling'
 import { findMatchingWaitlistEntries } from '@/lib/waitlist'
 import { notifyWaitlistEntries } from '@/lib/notifications'
-import { recordAuditLog } from '@/lib/audit'
 
 export const runtime = 'nodejs'
 
@@ -32,13 +33,17 @@ export async function POST(request) {
     if (!prisma) {
       const updatedBookings = []
       const cancelledBookings = []
+      const auditBeforeById = new Map()
+
       memoryStore.bookings.forEach((booking) => {
-        if (ids.includes(booking.id)) {
-          booking.status = status
-          updatedBookings.push(booking)
-          if (status === 'CANCELLED') {
-            cancelledBookings.push(booking)
-          }
+        if (!ids.includes(booking.id)) return
+
+        auditBeforeById.set(booking.id, buildAuditSnapshot('BOOKING', booking))
+        booking.status = status
+        updatedBookings.push(booking)
+
+        if (status === 'CANCELLED') {
+          cancelledBookings.push(booking)
         }
       })
 
@@ -49,6 +54,7 @@ export async function POST(request) {
           entry.status = 'NOTIFIED'
           entry.notifiedAt = new Date().toISOString()
         })
+
         if (matches.length) {
           try {
             await notifyWaitlistEntries({
@@ -62,6 +68,26 @@ export async function POST(request) {
           }
         }
       }
+
+      for (const booking of updatedBookings) {
+        await recordAuditLog({
+          actorId: admin.id,
+          actorName: admin.name,
+          actorRole: admin.role,
+          action: 'UPDATE',
+          entityType: 'BOOKING',
+          entityId: booking.id,
+          message:
+            status === 'CONFIRMED'
+              ? `تم تأكيد الحجز الخاص بـ ${booking.customerName}`
+              : `تم إلغاء الحجز الخاص بـ ${booking.customerName}`,
+          metadata: {
+            before: auditBeforeById.get(booking.id) || null,
+            after: buildAuditSnapshot('BOOKING', booking),
+          },
+        })
+      }
+
       return NextResponse.json({ bookings: updatedBookings, action, status })
     }
 
@@ -69,7 +95,7 @@ export async function POST(request) {
       where: { id: { in: ids } },
       include: { court: true },
     })
-
+    const auditBeforeById = new Map(bookingsToUpdate.map((booking) => [booking.id, buildAuditSnapshot('BOOKING', booking)]))
     const authorizedIds = bookingsToUpdate.map((booking) => booking.id)
 
     await prisma.booking.updateMany({
@@ -95,7 +121,10 @@ export async function POST(request) {
           status === 'CONFIRMED'
             ? `تم تأكيد الحجز الخاص بـ ${booking.customerName}`
             : `تم إلغاء الحجز الخاص بـ ${booking.customerName}`,
-        metadata: { courtId: booking.courtId, status },
+        metadata: {
+          before: auditBeforeById.get(booking.id) || null,
+          after: buildAuditSnapshot('BOOKING', booking),
+        },
       })
     }
 

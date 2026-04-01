@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAdminUser } from '@/lib/admin'
-import { recordAuditLog } from '@/lib/audit'
+import { buildAuditSnapshot, recordAuditLog } from '@/lib/audit'
 import { getPrisma } from '@/lib/prisma'
 import { memoryStore } from '@/lib/store'
 import { calculateAmountCents, overlaps } from '@/lib/scheduling'
@@ -53,6 +53,7 @@ export async function PATCH(request, { params }) {
         return NextResponse.json({ error: 'Booking not found' }, { status: 404 })
       }
 
+      const before = buildAuditSnapshot('BOOKING', booking)
       const conflicts = hasConflict(memoryStore.bookings, bookingId, body.courtId, body.startsAt, body.endsAt)
       if (conflicts) {
         return NextResponse.json({ error: 'Booking conflicts with an existing slot' }, { status: 409 })
@@ -73,16 +74,15 @@ export async function PATCH(request, { params }) {
         entityId: booking.id,
         message: `تم إعادة جدولة الحجز الخاص بـ ${booking.customerName}`,
         metadata: {
-          courtId: body.courtId,
-          startsAt: body.startsAt,
-          endsAt: body.endsAt,
+          before,
+          after: buildAuditSnapshot('BOOKING', booking),
         },
       })
 
       return NextResponse.json({ booking })
     }
 
-    const existingBooking = await prisma.booking.findUnique({ where: { id: bookingId } })
+    const existingBooking = await prisma.booking.findUnique({ where: { id: bookingId }, include: { court: true } })
     if (!existingBooking) {
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 })
     }
@@ -119,9 +119,8 @@ export async function PATCH(request, { params }) {
       entityId: updatedBooking.id,
       message: `تم إعادة جدولة الحجز الخاص بـ ${updatedBooking.customerName}`,
       metadata: {
-        courtId: body.courtId,
-        startsAt: body.startsAt,
-        endsAt: body.endsAt,
+        before: buildAuditSnapshot('BOOKING', existingBooking),
+        after: buildAuditSnapshot('BOOKING', updatedBooking),
       },
     })
 

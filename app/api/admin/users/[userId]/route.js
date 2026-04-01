@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getAdminUser } from '@/lib/admin'
-import { recordAuditLog } from '@/lib/audit'
+import { buildAuditSnapshot, recordAuditLog } from '@/lib/audit'
 import { getPrisma } from '@/lib/prisma'
 import { memoryStore } from '@/lib/store'
 
@@ -54,6 +54,7 @@ export async function PUT(request, { params }) {
     }
 
     if (!prisma) {
+      const before = buildAuditSnapshot('USER', target)
       Object.assign(target, payload)
       await recordAuditLog({
         actorId: admin.id,
@@ -63,7 +64,10 @@ export async function PUT(request, { params }) {
         entityType: 'USER',
         entityId: target.id,
         message: `تم تحديث المستخدم ${target.name}`,
-        metadata: payload,
+        metadata: {
+          before,
+          after: buildAuditSnapshot('USER', target),
+        },
       })
       return NextResponse.json({ user: target })
     }
@@ -81,7 +85,10 @@ export async function PUT(request, { params }) {
       entityType: 'USER',
       entityId: user.id,
       message: `تم تحديث المستخدم ${user.name}`,
-      metadata: payload,
+      metadata: {
+        before: buildAuditSnapshot('USER', target),
+        after: buildAuditSnapshot('USER', user),
+      },
     })
 
     return NextResponse.json({ user })
@@ -121,6 +128,7 @@ export async function DELETE(request, { params }) {
         }
       }
 
+      const before = buildAuditSnapshot('USER', user)
       user.isActive = false
       await recordAuditLog({
         actorId: admin.id,
@@ -130,7 +138,10 @@ export async function DELETE(request, { params }) {
         entityType: 'USER',
         entityId: user.id,
         message: `تم تعطيل المستخدم ${user.name}`,
-        metadata: { isActive: false },
+        metadata: {
+          before,
+          after: buildAuditSnapshot('USER', user),
+        },
       })
       return NextResponse.json({ user })
     }
@@ -165,7 +176,10 @@ export async function DELETE(request, { params }) {
       entityType: 'USER',
       entityId: removed.id,
       message: `تم تعطيل المستخدم ${removed.name}`,
-      metadata: { isActive: false },
+      metadata: {
+        before: buildAuditSnapshot('USER', target),
+        after: buildAuditSnapshot('USER', removed),
+      },
     })
 
     return NextResponse.json({ user: removed })
