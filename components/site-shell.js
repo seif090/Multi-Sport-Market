@@ -13,6 +13,7 @@ export async function SiteShell({ children }) {
         </div>
         <nav className="topbar-actions" aria-label="Main navigation">
           <Link href="/">الرئيسية</Link>
+          <Link href="/courts">الملاعب</Link>
           <Link href="/courts/court-1">تفاصيل ملعب</Link>
           <Link href="/dashboard/vendors">الأصحاب</Link>
           <Link href="/dashboard/technicians">الفنيون</Link>
